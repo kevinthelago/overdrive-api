@@ -1,13 +1,14 @@
 package com.overdrive.competitor.dto
 
-import com.overdrive.catalog.domain.DistributionModel
 import com.overdrive.competitor.domain.CompetitorComparison
 import com.overdrive.competitor.domain.CompetitorResult
+import com.overdrive.competitor.domain.CompetitorType
 import com.overdrive.competitor.domain.NotOfferedReason
 import java.math.BigDecimal
+import java.util.UUID
 
 data class CompetitorComparisonResponse(
-    val productId: Long,
+    val productId: UUID,
     val destinationZip: String,
     val ourDeliveredCostUsd: BigDecimal,
     val medianSavingsPct: BigDecimal,
@@ -25,14 +26,14 @@ data class CompetitorComparisonResponse(
 }
 
 sealed class CompetitorResultDto {
-    abstract val competitorId: Long
+    abstract val competitorId: UUID
     abstract val competitorName: String
     abstract val offered: Boolean
 
     data class CoveredDto(
-        override val competitorId: Long,
+        override val competitorId: UUID,
         override val competitorName: String,
-        val distributionModel: DistributionModel,
+        val competitorType: CompetitorType,
         val sellingPriceUsd: BigDecimal,
         val deliveredCostUsd: BigDecimal,
         val savingsPct: BigDecimal,
@@ -43,7 +44,7 @@ sealed class CompetitorResultDto {
     }
 
     data class NotOfferedDto(
-        override val competitorId: Long,
+        override val competitorId: UUID,
         override val competitorName: String,
         val reason: NotOfferedReason,
     ) : CompetitorResultDto() {
@@ -55,8 +56,9 @@ sealed class CompetitorResultDto {
             is CompetitorResult.Win -> CoveredDto(
                 competitorId = domain.competitorId,
                 competitorName = domain.competitorName,
-                distributionModel = domain.sellingPriceEstimate.assumptions["strategy"]
-                    .let { DistributionModel.valueOf(it.toString()) },
+                competitorType = CompetitorType.fromCatalogModel(
+                    domain.sellingPriceEstimate.assumptions["strategy"]?.toString(),
+                ),
                 sellingPriceUsd = domain.sellingPriceEstimate.price.amount,
                 deliveredCostUsd = domain.deliveredCostEstimate.price.amount,
                 savingsPct = domain.savingsPct,
@@ -67,8 +69,9 @@ sealed class CompetitorResultDto {
             is CompetitorResult.Loss -> CoveredDto(
                 competitorId = domain.competitorId,
                 competitorName = domain.competitorName,
-                distributionModel = domain.sellingPriceEstimate.assumptions["strategy"]
-                    .let { DistributionModel.valueOf(it.toString()) },
+                competitorType = CompetitorType.fromCatalogModel(
+                    domain.sellingPriceEstimate.assumptions["strategy"]?.toString(),
+                ),
                 sellingPriceUsd = domain.sellingPriceEstimate.price.amount,
                 deliveredCostUsd = domain.deliveredCostEstimate.price.amount,
                 savingsPct = domain.savingsPct,
@@ -86,7 +89,7 @@ sealed class CompetitorResultDto {
 }
 
 data class BatchComparisonResponse(
-    val categoryId: Long,
+    val category: String,
     val destinationZip: String,
     val comparisons: List<CompetitorComparisonResponse>,
 )

@@ -10,19 +10,21 @@ import io.kotest.matchers.bigdecimal.shouldBeGreaterThan
 import io.kotest.matchers.bigdecimal.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldBeEqualComparingTo
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import java.math.BigDecimal
+import java.util.UUID
 
 class OpportunityScoreTest : FreeSpec({
 
     fun factor(type: FactorType, raw: BigDecimal, normalized: BigDecimal, zero: ZeroReason? = null) =
         OpportunityFactor(type, raw, normalized, zero)
 
+    val testProductId: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
+
     "OpportunityScore.compute" - {
         "returns positive score for all healthy factors" {
             val score = OpportunityScore.compute(
-                productId = 1L,
-                categoryId = 10L,
+                productId = testProductId,
+                category = "Hardware",
                 savingsPct = factor(FactorType.SAVINGS_PCT, BigDecimal("0.20"), BigDecimal("0.20")),
                 marketSize = factor(FactorType.MARKET_SIZE, BigDecimal("1000000"), BigDecimal("0.60")),
                 orderFrequency = factor(FactorType.ORDER_FREQUENCY, BigDecimal("12"), BigDecimal("0.033")),
@@ -36,8 +38,8 @@ class OpportunityScoreTest : FreeSpec({
 
         "returns zero score when supplierAvailability is zero" {
             val score = OpportunityScore.compute(
-                productId = 1L,
-                categoryId = 10L,
+                productId = testProductId,
+                category = "Hardware",
                 savingsPct = factor(FactorType.SAVINGS_PCT, BigDecimal("0.20"), BigDecimal("0.20")),
                 marketSize = factor(FactorType.MARKET_SIZE, BigDecimal("1000000"), BigDecimal("0.60")),
                 orderFrequency = factor(FactorType.ORDER_FREQUENCY, BigDecimal("12"), BigDecimal("0.033")),
@@ -51,8 +53,8 @@ class OpportunityScoreTest : FreeSpec({
 
         "returns zero score when no-route" {
             val score = OpportunityScore.compute(
-                productId = 1L,
-                categoryId = 10L,
+                productId = testProductId,
+                category = "Hardware",
                 savingsPct = factor(FactorType.SAVINGS_PCT, BigDecimal.ZERO, BigDecimal.ZERO, ZeroReason.NO_ROUTE),
                 marketSize = factor(FactorType.MARKET_SIZE, BigDecimal("1000000"), BigDecimal("0.60")),
                 orderFrequency = factor(FactorType.ORDER_FREQUENCY, BigDecimal("12"), BigDecimal("0.033")),
@@ -68,7 +70,7 @@ class OpportunityScoreTest : FreeSpec({
             fun scoreFor(complexity: BigDecimal): BigDecimal {
                 val normalized = FactorNormalizer.normalizeLogisticsComplexity(complexity)
                 return OpportunityScore.compute(
-                    productId = 1L, categoryId = 10L,
+                    productId = testProductId, category = "Hardware",
                     savingsPct = factor(FactorType.SAVINGS_PCT, BigDecimal("0.20"), BigDecimal("0.20")),
                     marketSize = factor(FactorType.MARKET_SIZE, BigDecimal("1000000"), BigDecimal("0.60")),
                     orderFrequency = factor(FactorType.ORDER_FREQUENCY, BigDecimal("12"), BigDecimal("0.033")),
@@ -89,7 +91,7 @@ class OpportunityScoreTest : FreeSpec({
             FactorNormalizer.normalizeSavingsPct(BigDecimal("0.35")) shouldBeLessThan BigDecimal.ONE
         }
 
-        "normalizeMarketSize: $1k → near 0, $1B → near 1" {
+        "normalizeMarketSize: \$1k → near 0, \$1B → near 1" {
             val small = FactorNormalizer.normalizeMarketSize(BigDecimal("1000"))
             val large = FactorNormalizer.normalizeMarketSize(BigDecimal("1000000000"))
             small shouldBeLessThan BigDecimal("0.1")
@@ -101,16 +103,13 @@ class OpportunityScoreTest : FreeSpec({
             FactorNormalizer.normalizeOrderFrequency(BigDecimal("1")) shouldBeLessThan BigDecimal("0.01")
         }
 
-        "normalizeCategoryGrowth: 0% → 0.5 (neutral)" {
-            val neutral = FactorNormalizer.normalizeCategoryGrowth(BigDecimal.ZERO)
-            neutral.compareTo(BigDecimal("0.5")) shouldBe 0
+        "normalizeCategoryGrowth: 0% growth → 0.5 (neutral)" {
+            FactorNormalizer.normalizeCategoryGrowth(BigDecimal.ZERO).compareTo(BigDecimal("0.5")) shouldBe 0
         }
 
-        "normalizeLogisticsComplexity: 1 (easy) → near 1, 5 (hard) → near 0" {
-            val easy = FactorNormalizer.normalizeLogisticsComplexity(BigDecimal("1.0"))
-            val hard = FactorNormalizer.normalizeLogisticsComplexity(BigDecimal("5.0"))
-            easy.compareTo(BigDecimal.ONE) shouldBe 0
-            hard.compareTo(BigDecimal.ZERO) shouldBe 0
+        "normalizeLogisticsComplexity: 1 (easy) → 1, 5 (hard) → 0" {
+            FactorNormalizer.normalizeLogisticsComplexity(BigDecimal("1.0")).compareTo(BigDecimal.ONE) shouldBe 0
+            FactorNormalizer.normalizeLogisticsComplexity(BigDecimal("5.0")).compareTo(BigDecimal.ZERO) shouldBe 0
         }
 
         "normalizeSupplierAvailability clamps to [0,1]" {

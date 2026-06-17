@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/competitors")
@@ -19,11 +20,11 @@ class CompetitorController(
 
     /**
      * GET /api/competitors/compare?productId=&zip=
-     * Returns a per-competitor price/delivered-cost comparison for one product at one ZIP.
+     * Per-competitor price/delivered-cost comparison for one product at one ZIP.
      */
     @GetMapping("/compare")
     fun compare(
-        @RequestParam productId: Long,
+        @RequestParam productId: UUID,
         @RequestParam zip: String,
     ): ResponseEntity<CompetitorComparisonResponse> {
         val result = competitorAnalysisService.compare(productId, zip)
@@ -31,19 +32,19 @@ class CompetitorController(
     }
 
     /**
-     * GET /api/competitors/compare/batch?categoryId=&zip=
+     * GET /api/competitors/compare/batch?category=&zip=
      * Batch comparison over all products in a category. Our delivered cost is resolved
-     * once per product, not per product-competitor pair, avoiding N+1.
+     * once per product to avoid N+1 routing calls.
      */
     @GetMapping("/compare/batch")
     fun compareBatch(
-        @RequestParam categoryId: Long,
+        @RequestParam category: String,
         @RequestParam zip: String,
     ): ResponseEntity<BatchComparisonResponse> {
-        val results = competitorAnalysisService.compareByCategory(categoryId, zip)
+        val results = competitorAnalysisService.compareByCategory(category, zip)
         return ResponseEntity.ok(
             BatchComparisonResponse(
-                categoryId = categoryId,
+                category = category,
                 destinationZip = zip,
                 comparisons = results.map { CompetitorComparisonResponse.from(it) },
             ),
