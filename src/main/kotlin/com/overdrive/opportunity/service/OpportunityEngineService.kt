@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.overdrive.catalog.domain.product.Product
 import com.overdrive.catalog.domain.product.ProductRepository
 import com.overdrive.catalog.domain.supplier.SupplierProductRepository
+import com.overdrive.common.measure.Weight
 import com.overdrive.common.money.Money
 import com.overdrive.competitor.domain.CompetitorResult
 import com.overdrive.competitor.service.CompetitorAnalysisService
-import com.overdrive.cost.domain.WeightUnit
 import com.overdrive.opportunity.domain.FactorNormalizer
 import com.overdrive.opportunity.domain.FactorType
 import com.overdrive.opportunity.domain.OpportunityFactor
@@ -76,8 +76,8 @@ class OpportunityEngineService(
                         opportunityId = UUID.randomUUID(),
                         origin = Location("US"),
                         destination = Location("US", UsRegion.MIDWEST.regionLabel),
-                        weight = com.overdrive.cost.domain.Weight(product.weightLbs, WeightUnit.LBS),
-                        cargoValue = com.overdrive.cost.domain.Money(product.costAmount),
+                        weight = Weight.ofPounds(product.weightLbs),
+                        cargoValue = Money.of(product.costAmount),
                     ),
                 )
             }.getOrNull()
@@ -161,8 +161,8 @@ class OpportunityEngineService(
                         opportunityId = UUID.randomUUID(),
                         origin = Location("US"),
                         destination = Location("US", region.regionLabel),
-                        weight = com.overdrive.cost.domain.Weight(product.weightLbs, WeightUnit.LBS),
-                        cargoValue = com.overdrive.cost.domain.Money(product.costAmount),
+                        weight = Weight.ofPounds(product.weightLbs),
+                        cargoValue = Money.of(product.costAmount),
                     ),
                 )
             }.getOrNull() ?: return@mapNotNull null

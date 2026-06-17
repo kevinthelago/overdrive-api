@@ -6,13 +6,13 @@ import com.overdrive.catalog.domain.product.Product
 import com.overdrive.catalog.domain.product.ProductRepository
 import com.overdrive.catalog.domain.rate.ZipCentroid
 import com.overdrive.catalog.domain.rate.ZipCentroidRepository
+import com.overdrive.common.measure.Weight
 import com.overdrive.common.money.Money
 import com.overdrive.competitor.domain.CompetitorComparison
 import com.overdrive.competitor.domain.CompetitorResult
 import com.overdrive.competitor.domain.CompetitorStrategy
 import com.overdrive.competitor.domain.CoverageDecision
 import com.overdrive.competitor.domain.NotOfferedReason
-import com.overdrive.cost.domain.WeightUnit
 import com.overdrive.routing.domain.Location
 import com.overdrive.routing.domain.RoutingContext
 import com.overdrive.routing.service.RoutingService
@@ -91,8 +91,8 @@ class CompetitorAnalysisService(
                     opportunityId = UUID.randomUUID(),
                     origin = Location(countryCode = "US"),
                     destination = Location(countryCode = "US", region = centroid.region),
-                    weight = com.overdrive.cost.domain.Weight(product.weightLbs, WeightUnit.LBS),
-                    cargoValue = com.overdrive.cost.domain.Money(product.costAmount),
+                    weight = Weight.ofPounds(product.weightLbs),
+                    cargoValue = Money.of(product.costAmount),
                 ),
             )
         }.getOrNull()
