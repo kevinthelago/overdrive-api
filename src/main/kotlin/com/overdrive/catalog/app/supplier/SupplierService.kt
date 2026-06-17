@@ -25,35 +25,34 @@ class SupplierService(private val suppliers: SupplierRepository) {
 
     fun create(req: SupplierCreateRequest): Supplier = suppliers.save(
         Supplier(
-            name               = req.name,
-            moq                = req.moq,
-            leadTimeDays       = req.leadTimeDays,
-            cost               = req.cost,
-            originZip          = req.originZip,
-            originLat          = req.originLat,
-            originLng          = req.originLng,
-            volumeDiscountPct  = req.volumeDiscountPct,
-            reliabilityScore   = req.reliabilityScore
+            name              = req.name,
+            moq               = req.moq,
+            leadTimeDays      = req.leadTimeDays,
+            costAmount        = req.cost?.amount,
+            costCurrency      = req.cost?.currency ?: "USD",
+            originZip         = req.originZip,
+            originLat         = req.originLat,
+            originLng         = req.originLng,
+            volumeDiscountPct = req.volumeDiscountPct,
+            reliabilityScore  = req.reliabilityScore
         )
     )
 
     fun update(id: UUID, req: SupplierUpdateRequest): Supplier {
-        val supplier = get(id)
-        supplier.name              = req.name
-        supplier.moq               = req.moq
-        supplier.leadTimeDays      = req.leadTimeDays
-        supplier.cost              = req.cost
-        supplier.originZip         = req.originZip
-        supplier.originLat         = req.originLat
-        supplier.originLng         = req.originLng
-        supplier.volumeDiscountPct = req.volumeDiscountPct
-        supplier.reliabilityScore  = req.reliabilityScore
-        supplier.updatedAt         = Instant.now()
-        return suppliers.save(supplier)
+        val s = get(id)
+        s.name              = req.name
+        s.moq               = req.moq
+        s.leadTimeDays      = req.leadTimeDays
+        s.costAmount        = req.cost?.amount
+        s.costCurrency      = req.cost?.currency ?: "USD"
+        s.originZip         = req.originZip
+        s.originLat         = req.originLat
+        s.originLng         = req.originLng
+        s.volumeDiscountPct = req.volumeDiscountPct
+        s.reliabilityScore  = req.reliabilityScore
+        s.updatedAt         = Instant.now()
+        return suppliers.save(s)
     }
 
-    fun delete(id: UUID) {
-        val supplier = get(id)
-        suppliers.delete(supplier)
-    }
+    fun delete(id: UUID) = suppliers.delete(get(id))
 }

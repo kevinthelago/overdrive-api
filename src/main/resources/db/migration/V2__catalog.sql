@@ -1,7 +1,8 @@
 -- V2: Catalog aggregates — Product, Supplier, Warehouse, Carrier, Competitor
--- All monetary values: NUMERIC(18,4) + VARCHAR(3) currency pair (mirrors Money primitive)
--- Geo coordinates: DOUBLE PRECISION lat/lng (mirrors Geo primitive)
--- All aggregates carry a @Version column for JPA optimistic locking
+-- Monetary values: NUMERIC(18,4) amount + VARCHAR(3) ISO-4217 currency code (maps to Money.of())
+-- Weight: NUMERIC(10,4) pounds (maps to Weight.ofPounds())
+-- Geo coordinates: DOUBLE PRECISION lat/lng (maps to Geo(lat, lon))
+-- All aggregates carry a version column for JPA optimistic locking (@Version)
 
 CREATE TABLE product (
     id                      UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -11,9 +12,8 @@ CREATE TABLE product (
     name                    VARCHAR(255)    NOT NULL,
     category                VARCHAR(100)    NOT NULL,
 
-    -- Weight (mirrors Weight value object: value + unit)
-    weight_value            NUMERIC(10,3)   NOT NULL CHECK (weight_value > 0),
-    weight_unit             VARCHAR(10)     NOT NULL DEFAULT 'LB',
+    -- Weight stored in pounds (mirrors Weight.pounds; Weight always converts to lbs internally)
+    weight_lbs              NUMERIC(10,4)   NOT NULL CHECK (weight_lbs > 0),
 
     -- Dimensions in inches (mirrors Dimensions value object: length/width/height)
     length_in               NUMERIC(10,2)   NOT NULL CHECK (length_in > 0),

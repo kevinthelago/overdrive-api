@@ -1,18 +1,12 @@
 package com.overdrive.catalog.web
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.overdrive.catalog.domain.product.Product
 import com.overdrive.catalog.domain.product.ProductRepository
-import com.overdrive.common.measure.Dimensions
-import com.overdrive.common.measure.Weight
-import com.overdrive.common.money.Money
-import org.junit.jupiter.api.BeforeEach
+import com.overdrive.support.AbstractIntegrationTest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
@@ -21,22 +15,19 @@ import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @Transactional
 class ProductControllerIT @Autowired constructor(
     val mvc: MockMvc,
-    val mapper: ObjectMapper,
     val productRepo: ProductRepository
-) {
+) : AbstractIntegrationTest() {
 
-    private fun sampleProductJson(sku: String = "TEST-001") = """
+    private fun productJson(sku: String = "TEST-001", name: String = "Test Widget") = """
         {
           "sku": "$sku",
-          "name": "Test Widget",
+          "name": "$name",
           "category": "ELECTRONICS",
-          "weight": { "value": 1.5, "unit": "LB" },
+          "weight": { "pounds": 1.5 },
           "dimensions": { "lengthIn": 10.0, "widthIn": 5.0, "heightIn": 3.0 },
           "hazardous": false,
           "fragile": false,
@@ -52,13 +43,15 @@ class ProductControllerIT @Autowired constructor(
     fun `POST create returns 201 with product`() {
         mvc.post("/api/catalog/product") {
             contentType = MediaType.APPLICATION_JSON
-            content = sampleProductJson()
+            content = productJson()
         }.andExpect {
             status { isCreated() }
             jsonPath("$.sku") { value("TEST-001") }
             jsonPath("$.category") { value("ELECTRONICS") }
             jsonPath("$.id") { exists() }
             jsonPath("$.version") { value(0) }
+            jsonPath("$.weight.pounds") { value(1.5) }
+            jsonPath("$.cost.amount") { value(12.00) }
         }
     }
 
@@ -89,7 +82,6 @@ class ProductControllerIT @Autowired constructor(
     @Test
     fun `GET by id returns product`() {
         val saved = productRepo.save(minimalProduct("FIND-ME"))
-
         mvc.get("/api/catalog/product/${saved.id}").andExpect {
             status { isOk() }
             jsonPath("$.sku") { value("FIND-ME") }
@@ -106,10 +98,9 @@ class ProductControllerIT @Autowired constructor(
     @Test
     fun `PUT update returns updated product`() {
         val saved = productRepo.save(minimalProduct("UPDATE-ME"))
-
         mvc.put("/api/catalog/product/${saved.id}") {
             contentType = MediaType.APPLICATION_JSON
-            content = sampleProductJson("UPDATE-ME").replace("Test Widget", "Updated Widget")
+            content = productJson("UPDATE-ME", "Updated Widget")
         }.andExpect {
             status { isOk() }
             jsonPath("$.name") { value("Updated Widget") }
@@ -119,42 +110,38 @@ class ProductControllerIT @Autowired constructor(
     @Test
     fun `DELETE returns 204`() {
         val saved = productRepo.save(minimalProduct("DELETE-ME"))
-
         mvc.delete("/api/catalog/product/${saved.id}").andExpect {
             status { isNoContent() }
         }
     }
 
     @Test
-    fun `POST with invalid payload returns 400 with field errors`() {
+    fun `POST with missing required fields returns 400`() {
         mvc.post("/api/catalog/product") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"sku":"","name":"","category":""}"""
-        }.andExpect {
-            status { isBadRequest() }
-        }
+        }.andExpect { status { isBadRequest() } }
     }
 
     @Test
     fun `POST duplicate SKU returns 400`() {
         productRepo.save(minimalProduct("DUP-SKU"))
-
         mvc.post("/api/catalog/product") {
             contentType = MediaType.APPLICATION_JSON
-            content = sampleProductJson("DUP-SKU")
-        }.andExpect {
-            status { isBadRequest() }
-        }
+            content = productJson("DUP-SKU")
+        }.andExpect { status { isBadRequest() } }
     }
 
     private fun minimalProduct(sku: String, category: String = "ELECTRONICS") = Product(
-        sku       = sku,
-        name      = "Test Product",
-        category  = category,
-        weight    = Weight(BigDecimal("1.0"), "LB"),
-        dimensions = Dimensions(BigDecimal("10.0"), BigDecimal("5.0"), BigDecimal("3.0")),
-        cost      = Money(BigDecimal("10.00"), "USD"),
-        msrp      = Money(BigDecimal("30.00"), "USD"),
-        palletQty = 48
+        sku        = sku,
+        name       = "Test Product",
+        category   = category,
+        weightLbs  = BigDecimal("1.0"),
+        lengthIn   = BigDecimal("10.0"),
+        widthIn    = BigDecimal("5.0"),
+        heightIn   = BigDecimal("3.0"),
+        costAmount = BigDecimal("10.00"),
+        msrpAmount = BigDecimal("30.00"),
+        palletQty  = 48
     )
 }

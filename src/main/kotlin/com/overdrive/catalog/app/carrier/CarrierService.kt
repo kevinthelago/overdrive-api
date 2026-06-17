@@ -1,5 +1,6 @@
 package com.overdrive.catalog.app.carrier
 
+import com.overdrive.catalog.app.CatalogReferentialIntegrityException
 import com.overdrive.catalog.domain.carrier.Carrier
 import com.overdrive.catalog.domain.carrier.CarrierLane
 import com.overdrive.catalog.domain.carrier.CarrierLaneRepository
@@ -7,7 +8,6 @@ import com.overdrive.catalog.domain.carrier.CarrierRepository
 import com.overdrive.catalog.web.carrier.CarrierCreateRequest
 import com.overdrive.catalog.web.carrier.CarrierLaneCreateRequest
 import com.overdrive.catalog.web.carrier.CarrierUpdateRequest
-import com.overdrive.catalog.app.CatalogReferentialIntegrityException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -35,26 +35,30 @@ class CarrierService(
 
     fun create(req: CarrierCreateRequest): Carrier = carriers.save(
         Carrier(
-            name                 = req.name,
-            scac                 = req.scac,
-            pricingModel         = req.pricingModel,
-            liftgateSurcharge    = req.liftgateSurcharge,
-            residentialSurcharge = req.residentialSurcharge,
-            dimFactor            = req.dimFactor,
-            fuelSurchargePct     = req.fuelSurchargePct
+            name                         = req.name,
+            scac                         = req.scac,
+            pricingModel                 = req.pricingModel,
+            liftgateSurchargeAmount      = req.liftgateSurcharge.amount,
+            liftgateSurchargeCurrency    = req.liftgateSurcharge.currency,
+            residentialSurchargeAmount   = req.residentialSurcharge.amount,
+            residentialSurchargeCurrency = req.residentialSurcharge.currency,
+            dimFactor                    = req.dimFactor,
+            fuelSurchargePct             = req.fuelSurchargePct
         )
     )
 
     fun update(id: UUID, req: CarrierUpdateRequest): Carrier {
         val c = get(id)
-        c.name                 = req.name
-        c.scac                 = req.scac
-        c.pricingModel         = req.pricingModel
-        c.liftgateSurcharge    = req.liftgateSurcharge
-        c.residentialSurcharge = req.residentialSurcharge
-        c.dimFactor            = req.dimFactor
-        c.fuelSurchargePct     = req.fuelSurchargePct
-        c.updatedAt            = Instant.now()
+        c.name                         = req.name
+        c.scac                         = req.scac
+        c.pricingModel                 = req.pricingModel
+        c.liftgateSurchargeAmount      = req.liftgateSurcharge.amount
+        c.liftgateSurchargeCurrency    = req.liftgateSurcharge.currency
+        c.residentialSurchargeAmount   = req.residentialSurcharge.amount
+        c.residentialSurchargeCurrency = req.residentialSurcharge.currency
+        c.dimFactor                    = req.dimFactor
+        c.fuelSurchargePct             = req.fuelSurchargePct
+        c.updatedAt                    = Instant.now()
         return carriers.save(c)
     }
 
@@ -67,24 +71,24 @@ class CarrierService(
         carriers.delete(get(id))
     }
 
-    fun addLane(carrierId: UUID, req: CarrierLaneCreateRequest): CarrierLane {
-        val carrier = get(carrierId)
-        return lanes.save(
+    fun addLane(carrierId: UUID, req: CarrierLaneCreateRequest): CarrierLane =
+        lanes.save(
             CarrierLane(
-                carrier         = carrier,
-                serviceLevel    = req.serviceLevel,
-                originZone      = req.originZone,
-                destZone        = req.destZone,
-                originZipPrefix = req.originZipPrefix,
-                destZipPrefix   = req.destZipPrefix,
-                transitDays     = req.transitDays,
-                baseRate        = req.baseRate,
-                perLbRate       = req.perLbRate,
-                perCwtRate      = req.perCwtRate,
-                minCharge       = req.minCharge
+                carrier          = get(carrierId),
+                serviceLevel     = req.serviceLevel,
+                originZone       = req.originZone,
+                destZone         = req.destZone,
+                originZipPrefix  = req.originZipPrefix,
+                destZipPrefix    = req.destZipPrefix,
+                transitDays      = req.transitDays,
+                baseRateAmount   = req.baseRate.amount,
+                baseRateCurrency = req.baseRate.currency,
+                perLbRate        = req.perLbRate,
+                perCwtRate       = req.perCwtRate,
+                minChargeAmount  = req.minCharge?.amount,
+                minChargeCurrency = req.minCharge?.currency ?: "USD"
             )
         )
-    }
 
     fun deleteLane(laneId: UUID) {
         val lane = lanes.findById(laneId)

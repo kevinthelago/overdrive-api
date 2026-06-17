@@ -25,39 +25,42 @@ class WarehouseService(private val warehouses: WarehouseRepository) {
 
     fun create(req: WarehouseCreateRequest): Warehouse = warehouses.save(
         Warehouse(
-            name                = req.name,
-            type                = req.type,
-            state               = req.state,
-            zip                 = req.zip,
-            lat                 = req.lat,
-            lng                 = req.lng,
-            ceilingHeightFt     = req.ceilingHeightFt,
-            palletCapacity      = req.palletCapacity,
-            pickFee             = req.pickFee,
-            receivingFee        = req.receivingFee,
-            storageFeePerPallet = req.storageFeePerPallet
+            name                       = req.name,
+            type                       = req.type,
+            state                      = req.state,
+            zip                        = req.zip,
+            lat                        = req.lat,
+            lng                        = req.lng,
+            ceilingHeightFt            = req.ceilingHeightFt,
+            palletCapacity             = req.palletCapacity,
+            pickFeeAmount              = req.pickFee.amount,
+            pickFeeCurrency            = req.pickFee.currency,
+            receivingFeeAmount         = req.receivingFee.amount,
+            receivingFeeCurrency       = req.receivingFee.currency,
+            storageFeePerPalletAmount  = req.storageFeePerPallet.amount,
+            storageFeePerPalletCurrency = req.storageFeePerPallet.currency
         )
     )
 
     fun update(id: UUID, req: WarehouseUpdateRequest): Warehouse {
         val w = get(id)
-        w.name                = req.name
-        w.type                = req.type
-        w.state               = req.state
-        w.zip                 = req.zip
-        w.lat                 = req.lat
-        w.lng                 = req.lng
-        w.ceilingHeightFt     = req.ceilingHeightFt
-        w.palletCapacity      = req.palletCapacity
-        w.pickFee             = req.pickFee
-        w.receivingFee        = req.receivingFee
-        w.storageFeePerPallet = req.storageFeePerPallet
-        w.updatedAt           = Instant.now()
+        w.name                        = req.name
+        w.type                        = req.type
+        w.state                       = req.state
+        w.zip                         = req.zip
+        w.lat                         = req.lat
+        w.lng                         = req.lng
+        w.ceilingHeightFt             = req.ceilingHeightFt
+        w.palletCapacity              = req.palletCapacity
+        w.pickFeeAmount               = req.pickFee.amount
+        w.pickFeeCurrency             = req.pickFee.currency
+        w.receivingFeeAmount          = req.receivingFee.amount
+        w.receivingFeeCurrency        = req.receivingFee.currency
+        w.storageFeePerPalletAmount   = req.storageFeePerPallet.amount
+        w.storageFeePerPalletCurrency = req.storageFeePerPallet.currency
+        w.updatedAt                   = Instant.now()
         return warehouses.save(w)
     }
 
-    fun delete(id: UUID) {
-        val w = get(id)
-        warehouses.delete(w)
-    }
+    fun delete(id: UUID) = warehouses.delete(get(id))
 }

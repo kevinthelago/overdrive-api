@@ -25,13 +25,13 @@ class CompetitorService(private val competitors: CompetitorRepository) {
 
     fun create(req: CompetitorCreateRequest): Competitor = competitors.save(
         Competitor(
-            name               = req.name,
-            estimatedMargin    = req.estimatedMargin,
-            distributionModel  = req.distributionModel,
-            numWarehouses      = req.numWarehouses,
-            avgTransitDays     = req.avgTransitDays,
-            deliverySpeed      = req.deliverySpeed,
-            regionalPresence   = req.regionalPresence
+            name              = req.name,
+            estimatedMargin   = req.estimatedMargin,
+            distributionModel = req.distributionModel,
+            numWarehouses     = req.numWarehouses,
+            avgTransitDays    = req.avgTransitDays,
+            deliverySpeed     = req.deliverySpeed,
+            regionalPresence  = req.regionalPresence
         )
     )
 
@@ -48,7 +48,5 @@ class CompetitorService(private val competitors: CompetitorRepository) {
         return competitors.save(c)
     }
 
-    fun delete(id: UUID) {
-        competitors.delete(get(id))
-    }
+    fun delete(id: UUID) = competitors.delete(get(id))
 }

@@ -1,12 +1,12 @@
 package com.overdrive.catalog.domain.product
 
-import com.overdrive.common.geo.Geo
 import com.overdrive.common.measure.Dimensions
 import com.overdrive.common.measure.Weight
 import com.overdrive.common.money.Money
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.Currency
 import java.util.UUID
 
 @Entity
@@ -19,29 +19,18 @@ class Product(
     @Version
     var version: Long = 0,
 
-    @Column(nullable = false, length = 100)
-    var sku: String,
+    @Column(nullable = false, length = 100) var sku: String,
+    @Column(nullable = false, length = 255) var name: String,
+    @Column(nullable = false, length = 100) var category: String,
 
-    @Column(nullable = false, length = 255)
-    var name: String,
+    // Weight stored as pounds (Weight.pounds); Weight always normalises to lbs internally
+    @Column(name = "weight_lbs", nullable = false, precision = 10, scale = 4)
+    var weightLbs: BigDecimal,
 
-    @Column(nullable = false, length = 100)
-    var category: String,
-
-    @Embedded
-    @AttributeOverrides(
-        AttributeOverride(name = "value",  column = Column(name = "weight_value", nullable = false)),
-        AttributeOverride(name = "unit",   column = Column(name = "weight_unit",  nullable = false, length = 10))
-    )
-    var weight: Weight,
-
-    @Embedded
-    @AttributeOverrides(
-        AttributeOverride(name = "lengthIn", column = Column(name = "length_in", nullable = false)),
-        AttributeOverride(name = "widthIn",  column = Column(name = "width_in",  nullable = false)),
-        AttributeOverride(name = "heightIn", column = Column(name = "height_in", nullable = false))
-    )
-    var dimensions: Dimensions,
+    // Dimensions in inches
+    @Column(name = "length_in", nullable = false, precision = 10, scale = 2) var lengthIn: BigDecimal,
+    @Column(name = "width_in",  nullable = false, precision = 10, scale = 2) var widthIn: BigDecimal,
+    @Column(name = "height_in", nullable = false, precision = 10, scale = 2) var heightIn: BigDecimal,
 
     @Column(nullable = false) var hazardous: Boolean = false,
     @Column(nullable = false) var fragile: Boolean = false,
@@ -49,19 +38,13 @@ class Product(
     @Column(nullable = false) var stackable: Boolean = true,
     @Column(nullable = false) var palletQty: Int = 1,
 
-    @Embedded
-    @AttributeOverrides(
-        AttributeOverride(name = "amount",   column = Column(name = "cost_amount",   nullable = false, precision = 18, scale = 4)),
-        AttributeOverride(name = "currency", column = Column(name = "cost_currency", nullable = false, length = 3))
-    )
-    var cost: Money,
+    // Cost (Money — amount + ISO-4217 currency code)
+    @Column(name = "cost_amount",   nullable = false, precision = 18, scale = 4) var costAmount: BigDecimal,
+    @Column(name = "cost_currency", nullable = false, length = 3)                var costCurrency: String = "USD",
 
-    @Embedded
-    @AttributeOverrides(
-        AttributeOverride(name = "amount",   column = Column(name = "msrp_amount",   nullable = false, precision = 18, scale = 4)),
-        AttributeOverride(name = "currency", column = Column(name = "msrp_currency", nullable = false, length = 3))
-    )
-    var msrp: Money,
+    // MSRP (Money)
+    @Column(name = "msrp_amount",   nullable = false, precision = 18, scale = 4) var msrpAmount: BigDecimal,
+    @Column(name = "msrp_currency", nullable = false, length = 3)                var msrpCurrency: String = "USD",
 
     // Demand / market-intelligence fields
     @Column(precision = 18, scale = 2) var marketSize: BigDecimal? = null,
@@ -71,4 +54,9 @@ class Product(
 
     @Column(nullable = false) val createdAt: Instant = Instant.now(),
     @Column(nullable = false) var updatedAt: Instant = Instant.now()
-)
+) {
+    fun weight(): Weight = Weight.ofPounds(weightLbs)
+    fun cost(): Money   = Money.of(costAmount, Currency.getInstance(costCurrency))
+    fun msrp(): Money   = Money.of(msrpAmount, Currency.getInstance(msrpCurrency))
+    fun dimensions(): Dimensions = Dimensions(lengthIn, widthIn, heightIn)
+}

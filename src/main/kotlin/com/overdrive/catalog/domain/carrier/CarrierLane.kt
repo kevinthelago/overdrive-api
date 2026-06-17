@@ -4,6 +4,7 @@ import com.overdrive.common.money.Money
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.Currency
 import java.util.UUID
 
 @Entity
@@ -29,25 +30,21 @@ class CarrierLane(
 
     @Column(nullable = false) var transitDays: Int,
 
-    @Embedded
-    @AttributeOverrides(
-        AttributeOverride(name = "amount",   column = Column(name = "base_rate_amount",   nullable = false, precision = 18, scale = 4)),
-        AttributeOverride(name = "currency", column = Column(name = "base_rate_currency", nullable = false, length = 3))
-    )
-    var baseRate: Money,
+    // Base rate (Money)
+    @Column(name = "base_rate_amount",   nullable = false, precision = 18, scale = 4) var baseRateAmount: BigDecimal,
+    @Column(name = "base_rate_currency", nullable = false, length = 3)                var baseRateCurrency: String = "USD",
 
-    /** Per-lb incremental rate (parcel / LTL billable weight) */
+    /** Per-lb incremental rate (parcel/LTL billable weight) */
     @Column(precision = 10, scale = 6) var perLbRate: BigDecimal? = null,
-
     /** Per-cwt rate for LTL class pricing */
     @Column(precision = 10, scale = 4) var perCwtRate: BigDecimal? = null,
 
-    @Embedded
-    @AttributeOverrides(
-        AttributeOverride(name = "amount",   column = Column(name = "min_charge_amount",   precision = 18, scale = 4)),
-        AttributeOverride(name = "currency", column = Column(name = "min_charge_currency", length = 3))
-    )
-    var minCharge: Money? = null,
+    // Minimum charge (Money, nullable)
+    @Column(name = "min_charge_amount",   precision = 18, scale = 4) var minChargeAmount: BigDecimal? = null,
+    @Column(name = "min_charge_currency", length = 3)                var minChargeCurrency: String = "USD",
 
     @Column(nullable = false) val createdAt: Instant = Instant.now()
-)
+) {
+    fun baseRate(): Money  = Money.of(baseRateAmount, Currency.getInstance(baseRateCurrency))
+    fun minCharge(): Money? = minChargeAmount?.let { Money.of(it, Currency.getInstance(minChargeCurrency)) }
+}

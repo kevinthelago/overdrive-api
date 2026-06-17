@@ -1,28 +1,26 @@
 package com.overdrive.catalog.web
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.overdrive.catalog.domain.carrier.Carrier
 import com.overdrive.catalog.domain.carrier.CarrierRepository
-import com.overdrive.common.money.Money
+import com.overdrive.support.AbstractIntegrationTest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @Transactional
 class CarrierControllerIT @Autowired constructor(
     val mvc: MockMvc,
+    val mapper: ObjectMapper,
     val repo: CarrierRepository
-) {
+) : AbstractIntegrationTest() {
 
     private fun carrierJson(name: String = "Test Carrier", model: String = "PARCEL") = """
         {
@@ -44,6 +42,7 @@ class CarrierControllerIT @Autowired constructor(
         }.andExpect {
             status { isCreated() }
             jsonPath("$.pricingModel") { value("PARCEL") }
+            jsonPath("$.residentialSurcharge.amount") { value(4.90) }
         }
     }
 
@@ -60,42 +59,43 @@ class CarrierControllerIT @Autowired constructor(
     }
 
     @Test
-    fun `POST lane then GET lanes`() {
-        mvc.post("/api/catalog/carrier") {
+    fun `POST lane then GET lanes returns lane`() {
+        val createResult = mvc.post("/api/catalog/carrier") {
             contentType = MediaType.APPLICATION_JSON
             content = carrierJson("Lane Test Carrier")
-        }.andDo { result ->
-            val carrierId = com.fasterxml.jackson.databind.ObjectMapper()
-                .readTree(result.response.contentAsString).get("id").asText()
+        }.andExpect { status { isCreated() } }
+            .andReturn()
 
-            mvc.post("/api/catalog/carrier/$carrierId/lanes") {
-                contentType = MediaType.APPLICATION_JSON
-                content = """
-                    {
-                      "serviceLevel": "GROUND",
-                      "originZone": "1",
-                      "destZone": "2",
-                      "transitDays": 2,
-                      "baseRate": { "amount": 8.50, "currency": "USD" },
-                      "perLbRate": 0.15
-                    }
-                """.trimIndent()
-            }.andExpect {
-                status { isCreated() }
-                jsonPath("$.serviceLevel") { value("GROUND") }
-            }
+        val carrierId = mapper.readTree(createResult.response.contentAsString).get("id").asText()
 
-            mvc.get("/api/catalog/carrier/$carrierId/lanes").andExpect {
-                status { isOk() }
-                jsonPath("$.length()") { value(1) }
-            }
+        mvc.post("/api/catalog/carrier/$carrierId/lanes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                  "serviceLevel": "GROUND",
+                  "originZone": "1",
+                  "destZone": "2",
+                  "transitDays": 2,
+                  "baseRate": { "amount": 8.50, "currency": "USD" },
+                  "perLbRate": 0.15
+                }
+            """.trimIndent()
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.serviceLevel") { value("GROUND") }
+            jsonPath("$.carrierId") { value(carrierId) }
+        }
+
+        mvc.get("/api/catalog/carrier/$carrierId/lanes").andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
         }
     }
 
     private fun minimalCarrier(name: String, model: String) = Carrier(
-        name                 = name,
-        pricingModel         = model,
-        liftgateSurcharge    = Money(BigDecimal.ZERO, "USD"),
-        residentialSurcharge = Money(BigDecimal.ZERO, "USD")
+        name                         = name,
+        pricingModel                 = model,
+        liftgateSurchargeAmount      = BigDecimal.ZERO,
+        residentialSurchargeAmount   = BigDecimal.ZERO
     )
 }

@@ -1,7 +1,7 @@
 package com.overdrive.catalog.web.warehouse
 
 import com.overdrive.catalog.domain.warehouse.Warehouse
-import com.overdrive.common.money.Money
+import com.overdrive.catalog.web.MoneyDto
 import jakarta.validation.Valid
 import jakarta.validation.constraints.*
 import java.math.BigDecimal
@@ -16,10 +16,10 @@ data class WarehouseCreateRequest(
     @field:DecimalMin("-90")  @field:DecimalMax("90")  val lat: Double,
     @field:DecimalMin("-180") @field:DecimalMax("180") val lng: Double,
     @field:Positive val ceilingHeightFt: BigDecimal? = null,
-    @field:Min(1)   val palletCapacity: Int,
-    @field:Valid val pickFee: Money,
-    @field:Valid val receivingFee: Money,
-    @field:Valid val storageFeePerPallet: Money
+    @field:Min(1) val palletCapacity: Int,
+    @field:Valid val pickFee: MoneyDto,
+    @field:Valid val receivingFee: MoneyDto,
+    @field:Valid val storageFeePerPallet: MoneyDto
 )
 
 data class WarehouseUpdateRequest(
@@ -30,10 +30,10 @@ data class WarehouseUpdateRequest(
     @field:DecimalMin("-90")  @field:DecimalMax("90")  val lat: Double,
     @field:DecimalMin("-180") @field:DecimalMax("180") val lng: Double,
     @field:Positive val ceilingHeightFt: BigDecimal? = null,
-    @field:Min(1)   val palletCapacity: Int,
-    @field:Valid val pickFee: Money,
-    @field:Valid val receivingFee: Money,
-    @field:Valid val storageFeePerPallet: Money
+    @field:Min(1) val palletCapacity: Int,
+    @field:Valid val pickFee: MoneyDto,
+    @field:Valid val receivingFee: MoneyDto,
+    @field:Valid val storageFeePerPallet: MoneyDto
 )
 
 data class WarehouseResponse(
@@ -47,9 +47,9 @@ data class WarehouseResponse(
     val lng: Double,
     val ceilingHeightFt: BigDecimal?,
     val palletCapacity: Int,
-    val pickFee: Money,
-    val receivingFee: Money,
-    val storageFeePerPallet: Money,
+    val pickFee: MoneyDto,
+    val receivingFee: MoneyDto,
+    val storageFeePerPallet: MoneyDto,
     val createdAt: Instant,
     val updatedAt: Instant
 ) {
@@ -65,9 +65,9 @@ data class WarehouseResponse(
             lng                 = w.lng,
             ceilingHeightFt     = w.ceilingHeightFt,
             palletCapacity      = w.palletCapacity,
-            pickFee             = w.pickFee,
-            receivingFee        = w.receivingFee,
-            storageFeePerPallet = w.storageFeePerPallet,
+            pickFee             = MoneyDto(w.pickFeeAmount,             w.pickFeeCurrency),
+            receivingFee        = MoneyDto(w.receivingFeeAmount,        w.receivingFeeCurrency),
+            storageFeePerPallet = MoneyDto(w.storageFeePerPalletAmount, w.storageFeePerPalletCurrency),
             createdAt           = w.createdAt,
             updatedAt           = w.updatedAt
         )

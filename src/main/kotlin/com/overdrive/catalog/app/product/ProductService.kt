@@ -6,7 +6,6 @@ import com.overdrive.catalog.web.product.ProductCreateRequest
 import com.overdrive.catalog.web.product.ProductUpdateRequest
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
-import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -33,15 +32,19 @@ class ProductService(private val products: ProductRepository) {
                 sku                  = req.sku,
                 name                 = req.name,
                 category             = req.category,
-                weight               = req.weight,
-                dimensions           = req.dimensions,
+                weightLbs            = req.weight.pounds,
+                lengthIn             = req.dimensions.lengthIn,
+                widthIn              = req.dimensions.widthIn,
+                heightIn             = req.dimensions.heightIn,
                 hazardous            = req.hazardous,
                 fragile              = req.fragile,
                 temperatureSensitive = req.temperatureSensitive,
                 stackable            = req.stackable,
                 palletQty            = req.palletQty,
-                cost                 = req.cost,
-                msrp                 = req.msrp,
+                costAmount           = req.cost.amount,
+                costCurrency         = req.cost.currency,
+                msrpAmount           = req.msrp.amount,
+                msrpCurrency         = req.msrp.currency,
                 marketSize           = req.marketSize,
                 orderFrequency       = req.orderFrequency,
                 categoryGrowth       = req.categoryGrowth,
@@ -51,33 +54,33 @@ class ProductService(private val products: ProductRepository) {
     }
 
     fun update(id: UUID, req: ProductUpdateRequest): Product {
-        val product = get(id)
-        if (req.sku != product.sku && products.existsBySkuAndIdNot(req.sku, id)) {
+        val p = get(id)
+        if (req.sku != p.sku && products.existsBySkuAndIdNot(req.sku, id)) {
             throw IllegalArgumentException("SKU '${req.sku}' already exists")
         }
-        product.sku                  = req.sku
-        product.name                 = req.name
-        product.category             = req.category
-        product.weight               = req.weight
-        product.dimensions           = req.dimensions
-        product.hazardous            = req.hazardous
-        product.fragile              = req.fragile
-        product.temperatureSensitive = req.temperatureSensitive
-        product.stackable            = req.stackable
-        product.palletQty            = req.palletQty
-        product.cost                 = req.cost
-        product.msrp                 = req.msrp
-        product.marketSize           = req.marketSize
-        product.orderFrequency       = req.orderFrequency
-        product.categoryGrowth       = req.categoryGrowth
-        product.logisticsComplexity  = req.logisticsComplexity
-        product.updatedAt            = Instant.now()
-        return products.save(product)
+        p.sku                  = req.sku
+        p.name                 = req.name
+        p.category             = req.category
+        p.weightLbs            = req.weight.pounds
+        p.lengthIn             = req.dimensions.lengthIn
+        p.widthIn              = req.dimensions.widthIn
+        p.heightIn             = req.dimensions.heightIn
+        p.hazardous            = req.hazardous
+        p.fragile              = req.fragile
+        p.temperatureSensitive = req.temperatureSensitive
+        p.stackable            = req.stackable
+        p.palletQty            = req.palletQty
+        p.costAmount           = req.cost.amount
+        p.costCurrency         = req.cost.currency
+        p.msrpAmount           = req.msrp.amount
+        p.msrpCurrency         = req.msrp.currency
+        p.marketSize           = req.marketSize
+        p.orderFrequency       = req.orderFrequency
+        p.categoryGrowth       = req.categoryGrowth
+        p.logisticsComplexity  = req.logisticsComplexity
+        p.updatedAt            = Instant.now()
+        return products.save(p)
     }
 
-    /** Deletes the product. Callers are responsible for referential-integrity checks. */
-    fun delete(id: UUID) {
-        val product = get(id)
-        products.delete(product)
-    }
+    fun delete(id: UUID) = products.delete(get(id))
 }

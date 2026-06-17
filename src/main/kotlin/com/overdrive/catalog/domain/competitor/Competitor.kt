@@ -1,6 +1,8 @@
 package com.overdrive.catalog.domain.competitor
 
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -10,7 +12,6 @@ import java.util.UUID
 class Competitor(
 
     @Id val id: UUID = UUID.randomUUID(),
-
     @Version var version: Long = 0,
 
     @Column(nullable = false, length = 255) var name: String,
@@ -27,6 +28,7 @@ class Competitor(
     @Column(length = 20) var deliverySpeed: String? = null,
 
     @Column(columnDefinition = "text[]")
+    @JdbcTypeCode(SqlTypes.ARRAY)
     var regionalPresence: Array<String> = emptyArray(),
 
     @Column(nullable = false) val createdAt: Instant = Instant.now(),

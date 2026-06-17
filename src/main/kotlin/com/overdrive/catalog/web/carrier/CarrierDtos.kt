@@ -2,7 +2,7 @@ package com.overdrive.catalog.web.carrier
 
 import com.overdrive.catalog.domain.carrier.Carrier
 import com.overdrive.catalog.domain.carrier.CarrierLane
-import com.overdrive.common.money.Money
+import com.overdrive.catalog.web.MoneyDto
 import jakarta.validation.Valid
 import jakarta.validation.constraints.*
 import java.math.BigDecimal
@@ -11,20 +11,20 @@ import java.util.UUID
 
 data class CarrierCreateRequest(
     @field:NotBlank @field:Size(max = 255) val name: String,
-    @field:Size(max = 10)                  val scac: String? = null,
-    @field:NotBlank @field:Size(max = 20)  val pricingModel: String,
-    @field:Valid val liftgateSurcharge: Money,
-    @field:Valid val residentialSurcharge: Money,
+    @field:Size(max = 10) val scac: String? = null,
+    @field:NotBlank @field:Size(max = 20) val pricingModel: String,
+    @field:Valid val liftgateSurcharge: MoneyDto,
+    @field:Valid val residentialSurcharge: MoneyDto,
     @field:Positive val dimFactor: BigDecimal? = null,
     @field:DecimalMin("0") @field:DecimalMax("1") val fuelSurchargePct: BigDecimal = BigDecimal.ZERO
 )
 
 data class CarrierUpdateRequest(
     @field:NotBlank @field:Size(max = 255) val name: String,
-    @field:Size(max = 10)                  val scac: String? = null,
-    @field:NotBlank @field:Size(max = 20)  val pricingModel: String,
-    @field:Valid val liftgateSurcharge: Money,
-    @field:Valid val residentialSurcharge: Money,
+    @field:Size(max = 10) val scac: String? = null,
+    @field:NotBlank @field:Size(max = 20) val pricingModel: String,
+    @field:Valid val liftgateSurcharge: MoneyDto,
+    @field:Valid val residentialSurcharge: MoneyDto,
     @field:Positive val dimFactor: BigDecimal? = null,
     @field:DecimalMin("0") @field:DecimalMax("1") val fuelSurchargePct: BigDecimal = BigDecimal.ZERO
 )
@@ -35,8 +35,8 @@ data class CarrierResponse(
     val name: String,
     val scac: String?,
     val pricingModel: String,
-    val liftgateSurcharge: Money,
-    val residentialSurcharge: Money,
+    val liftgateSurcharge: MoneyDto,
+    val residentialSurcharge: MoneyDto,
     val dimFactor: BigDecimal?,
     val fuelSurchargePct: BigDecimal,
     val createdAt: Instant,
@@ -49,8 +49,8 @@ data class CarrierResponse(
             name                 = c.name,
             scac                 = c.scac,
             pricingModel         = c.pricingModel,
-            liftgateSurcharge    = c.liftgateSurcharge,
-            residentialSurcharge = c.residentialSurcharge,
+            liftgateSurcharge    = MoneyDto(c.liftgateSurchargeAmount,    c.liftgateSurchargeCurrency),
+            residentialSurcharge = MoneyDto(c.residentialSurchargeAmount, c.residentialSurchargeCurrency),
             dimFactor            = c.dimFactor,
             fuelSurchargePct     = c.fuelSurchargePct,
             createdAt            = c.createdAt,
@@ -66,10 +66,10 @@ data class CarrierLaneCreateRequest(
     @field:Size(max = 5)  val originZipPrefix: String? = null,
     @field:Size(max = 5)  val destZipPrefix: String? = null,
     @field:Min(0) val transitDays: Int,
-    @field:Valid  val baseRate: Money,
+    @field:Valid  val baseRate: MoneyDto,
     @field:PositiveOrZero val perLbRate: BigDecimal? = null,
     @field:PositiveOrZero val perCwtRate: BigDecimal? = null,
-    @field:Valid  val minCharge: Money? = null
+    @field:Valid  val minCharge: MoneyDto? = null
 )
 
 data class CarrierLaneResponse(
@@ -81,10 +81,10 @@ data class CarrierLaneResponse(
     val originZipPrefix: String?,
     val destZipPrefix: String?,
     val transitDays: Int,
-    val baseRate: Money,
+    val baseRate: MoneyDto,
     val perLbRate: BigDecimal?,
     val perCwtRate: BigDecimal?,
-    val minCharge: Money?,
+    val minCharge: MoneyDto?,
     val createdAt: Instant
 ) {
     companion object {
@@ -97,10 +97,10 @@ data class CarrierLaneResponse(
             originZipPrefix = l.originZipPrefix,
             destZipPrefix   = l.destZipPrefix,
             transitDays     = l.transitDays,
-            baseRate        = l.baseRate,
+            baseRate        = MoneyDto(l.baseRateAmount, l.baseRateCurrency),
             perLbRate       = l.perLbRate,
             perCwtRate      = l.perCwtRate,
-            minCharge       = l.minCharge,
+            minCharge       = l.minChargeAmount?.let { MoneyDto(it, l.minChargeCurrency) },
             createdAt       = l.createdAt
         )
     }

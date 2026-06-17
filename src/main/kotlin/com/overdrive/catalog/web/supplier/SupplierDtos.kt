@@ -1,7 +1,7 @@
 package com.overdrive.catalog.web.supplier
 
 import com.overdrive.catalog.domain.supplier.Supplier
-import com.overdrive.common.money.Money
+import com.overdrive.catalog.web.MoneyDto
 import jakarta.validation.Valid
 import jakarta.validation.constraints.*
 import java.math.BigDecimal
@@ -10,9 +10,9 @@ import java.util.UUID
 
 data class SupplierCreateRequest(
     @field:NotBlank @field:Size(max = 255) val name: String,
-    @field:Min(1)  val moq: Int = 1,
-    @field:Min(0)  val leadTimeDays: Int,
-    @field:Valid   val cost: Money? = null,
+    @field:Min(1) val moq: Int = 1,
+    @field:Min(0) val leadTimeDays: Int,
+    @field:Valid val cost: MoneyDto? = null,
     @field:Size(max = 10) val originZip: String? = null,
     @field:DecimalMin("-90")  @field:DecimalMax("90")  val originLat: Double? = null,
     @field:DecimalMin("-180") @field:DecimalMax("180") val originLng: Double? = null,
@@ -22,9 +22,9 @@ data class SupplierCreateRequest(
 
 data class SupplierUpdateRequest(
     @field:NotBlank @field:Size(max = 255) val name: String,
-    @field:Min(1)  val moq: Int = 1,
-    @field:Min(0)  val leadTimeDays: Int,
-    @field:Valid   val cost: Money? = null,
+    @field:Min(1) val moq: Int = 1,
+    @field:Min(0) val leadTimeDays: Int,
+    @field:Valid val cost: MoneyDto? = null,
     @field:Size(max = 10) val originZip: String? = null,
     @field:DecimalMin("-90")  @field:DecimalMax("90")  val originLat: Double? = null,
     @field:DecimalMin("-180") @field:DecimalMax("180") val originLng: Double? = null,
@@ -38,7 +38,7 @@ data class SupplierResponse(
     val name: String,
     val moq: Int,
     val leadTimeDays: Int,
-    val cost: Money?,
+    val cost: MoneyDto?,
     val originZip: String?,
     val originLat: Double?,
     val originLng: Double?,
@@ -54,7 +54,7 @@ data class SupplierResponse(
             name              = s.name,
             moq               = s.moq,
             leadTimeDays      = s.leadTimeDays,
-            cost              = s.cost,
+            cost              = s.costAmount?.let { MoneyDto(it, s.costCurrency) },
             originZip         = s.originZip,
             originLat         = s.originLat,
             originLng         = s.originLng,

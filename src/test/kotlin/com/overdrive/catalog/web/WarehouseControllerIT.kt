@@ -2,13 +2,11 @@ package com.overdrive.catalog.web
 
 import com.overdrive.catalog.domain.warehouse.Warehouse
 import com.overdrive.catalog.domain.warehouse.WarehouseRepository
-import com.overdrive.common.money.Money
+import com.overdrive.support.AbstractIntegrationTest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
@@ -16,14 +14,12 @@ import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @Transactional
 class WarehouseControllerIT @Autowired constructor(
     val mvc: MockMvc,
     val repo: WarehouseRepository
-) {
+) : AbstractIntegrationTest() {
 
     private fun warehouseJson(name: String = "Test DC") = """
         {
@@ -49,6 +45,7 @@ class WarehouseControllerIT @Autowired constructor(
             status { isCreated() }
             jsonPath("$.name") { value("Test DC") }
             jsonPath("$.type") { value("DC") }
+            jsonPath("$.pickFee.amount") { exists() }
         }
     }
 
@@ -65,6 +62,13 @@ class WarehouseControllerIT @Autowired constructor(
     }
 
     @Test
+    fun `GET by id returns 404 when missing`() {
+        mvc.get("/api/catalog/warehouse/00000000-0000-0000-0000-000000000099").andExpect {
+            status { isNotFound() }
+        }
+    }
+
+    @Test
     fun `DELETE returns 204`() {
         val saved = repo.save(minimalWarehouse("WH-DEL", "DC", "TX"))
         mvc.delete("/api/catalog/warehouse/${saved.id}").andExpect {
@@ -73,15 +77,15 @@ class WarehouseControllerIT @Autowired constructor(
     }
 
     private fun minimalWarehouse(name: String, type: String, state: String) = Warehouse(
-        name                = name,
-        type                = type,
-        state               = state,
-        zip                 = "00000",
-        lat                 = 0.0,
-        lng                 = 0.0,
-        palletCapacity      = 1000,
-        pickFee             = Money(BigDecimal.ZERO, "USD"),
-        receivingFee        = Money(BigDecimal.ZERO, "USD"),
-        storageFeePerPallet = Money(BigDecimal.ZERO, "USD")
+        name                        = name,
+        type                        = type,
+        state                       = state,
+        zip                         = "00000",
+        lat                         = 0.0,
+        lng                         = 0.0,
+        palletCapacity              = 1000,
+        pickFeeAmount               = BigDecimal.ZERO,
+        receivingFeeAmount          = BigDecimal.ZERO,
+        storageFeePerPalletAmount   = BigDecimal.ZERO
     )
 }
