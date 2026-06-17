@@ -3,6 +3,7 @@ package com.overdrive.catalog.web
 import com.overdrive.catalog.domain.warehouse.Warehouse
 import com.overdrive.catalog.domain.warehouse.WarehouseRepository
 import com.overdrive.support.AbstractIntegrationTest
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -20,6 +21,9 @@ class WarehouseControllerIT @Autowired constructor(
     val mvc: MockMvc,
     val repo: WarehouseRepository
 ) : AbstractIntegrationTest() {
+
+    @BeforeEach
+    fun clearWarehouses() = repo.deleteAll()
 
     private fun warehouseJson(name: String = "Test DC") = """
         {

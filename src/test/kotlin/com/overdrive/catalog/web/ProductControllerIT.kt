@@ -3,6 +3,7 @@ package com.overdrive.catalog.web
 import com.overdrive.catalog.domain.product.Product
 import com.overdrive.catalog.domain.product.ProductRepository
 import com.overdrive.support.AbstractIntegrationTest
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -21,6 +22,9 @@ class ProductControllerIT @Autowired constructor(
     val mvc: MockMvc,
     val productRepo: ProductRepository
 ) : AbstractIntegrationTest() {
+
+    @BeforeEach
+    fun clearProducts() = productRepo.deleteAll()
 
     private fun productJson(sku: String = "TEST-001", name: String = "Test Widget") = """
         {

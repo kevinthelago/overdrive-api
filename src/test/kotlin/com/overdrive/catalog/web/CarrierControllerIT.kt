@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.overdrive.catalog.domain.carrier.Carrier
 import com.overdrive.catalog.domain.carrier.CarrierRepository
 import com.overdrive.support.AbstractIntegrationTest
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -21,6 +22,9 @@ class CarrierControllerIT @Autowired constructor(
     val mapper: ObjectMapper,
     val repo: CarrierRepository
 ) : AbstractIntegrationTest() {
+
+    @BeforeEach
+    fun clearCarriers() = repo.deleteAll()
 
     private fun carrierJson(name: String = "Test Carrier", model: String = "PARCEL") = """
         {
