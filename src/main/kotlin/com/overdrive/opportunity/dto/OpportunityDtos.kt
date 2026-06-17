@@ -5,7 +5,6 @@ import com.overdrive.opportunity.domain.OpportunityScore
 import com.overdrive.opportunity.domain.RegionalScore
 import com.overdrive.opportunity.domain.ZeroReason
 import java.math.BigDecimal
-import java.util.UUID
 
 data class OpportunityResponse(
     val products: List<OpportunityResult>,
@@ -13,8 +12,8 @@ data class OpportunityResponse(
 )
 
 data class OpportunityResult(
-    val productId: UUID,
-    val category: String,
+    val productId: Long,
+    val categoryId: Long,
     val score: BigDecimal,
     val zeroReason: ZeroReason?,
     val factors: Map<FactorType, FactorDto>,
@@ -23,7 +22,7 @@ data class OpportunityResult(
     companion object {
         fun from(domain: OpportunityScore) = OpportunityResult(
             productId = domain.productId,
-            category = domain.category,
+            categoryId = domain.categoryId,
             score = domain.score,
             zeroReason = domain.zeroReason,
             factors = mapOf(
@@ -61,8 +60,8 @@ data class RegionalScoreDto(
 }
 
 data class CategoryOpportunity(
-    val category: String,
+    val categoryId: Long,
     val aggregateScore: BigDecimal,
     val productCount: Int,
-    val topProductId: UUID?,
+    val topProductId: Long?,
 )

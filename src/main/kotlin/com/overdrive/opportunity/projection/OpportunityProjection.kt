@@ -13,8 +13,7 @@ import java.util.UUID
 /**
  * Persisted snapshot of an opportunity score computation.
  * Written by [com.overdrive.opportunity.service.OpportunityEngineService] after every
- * batch recompute. Stale projections are replaced (delete + insert) per productId + scenarioId.
- * A null [scenarioId] row is the baseline; non-null rows are scenario snapshots.
+ * batch recompute. Stale projections are replaced in-place (upsert by productId + scenarioId).
  */
 @Entity
 @Table(name = "opportunity_projection")
@@ -24,11 +23,11 @@ class OpportunityProjection(
     @GeneratedValue(strategy = GenerationType.UUID)
     val id: UUID = UUID.randomUUID(),
 
-    @Column(nullable = false, columnDefinition = "uuid")
-    val productId: UUID,
+    @Column(nullable = false)
+    val productId: Long,
 
-    @Column(nullable = false, length = 100)
-    val category: String,
+    @Column(nullable = false)
+    val categoryId: Long,
 
     @Column(nullable = false, precision = 12, scale = 6)
     val score: BigDecimal,
@@ -51,12 +50,14 @@ class OpportunityProjection(
     @Column(precision = 10, scale = 6)
     val logisticsComplexity: BigDecimal?,
 
+    /** JSON array of { region, zip, score, savingsPct } objects. */
     @Column(columnDefinition = "jsonb")
     val regionBreakdownJson: String?,
 
-    @Column(nullable = true, length = 64)
+    @Column(nullable = false)
     val zeroReason: String?,
 
+    /** Null = baseline; non-null = scenario snapshot. */
     @Column
     val scenarioId: UUID?,
 

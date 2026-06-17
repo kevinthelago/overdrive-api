@@ -1,52 +1,48 @@
 package com.overdrive.competitor.service
 
-import com.overdrive.catalog.domain.competitor.Competitor
-import com.overdrive.catalog.domain.competitor.CompetitorRepository
-import com.overdrive.catalog.domain.product.Product
-import com.overdrive.catalog.domain.product.ProductRepository
-import com.overdrive.catalog.domain.rate.ZipCentroid
-import com.overdrive.catalog.domain.rate.ZipCentroidRepository
-import com.overdrive.common.money.Money
+import com.overdrive.catalog.domain.CompetitorProfile
+import com.overdrive.catalog.domain.Product
+import com.overdrive.catalog.service.CompetitorProfileRepository
+import com.overdrive.catalog.service.ProductRepository
+import com.overdrive.common.geo.ZipCentroid
+import com.overdrive.common.geo.ZipCentroidRepository
 import com.overdrive.competitor.domain.CompetitorComparison
 import com.overdrive.competitor.domain.CompetitorResult
 import com.overdrive.competitor.domain.CompetitorStrategy
 import com.overdrive.competitor.domain.CoverageDecision
 import com.overdrive.competitor.domain.NotOfferedReason
-import com.overdrive.cost.domain.WeightUnit
-import com.overdrive.routing.domain.Location
-import com.overdrive.routing.domain.RoutingContext
 import com.overdrive.routing.service.RoutingService
-import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.math.BigDecimal
-import java.util.UUID
 
 @Service
 @Transactional(readOnly = true)
 class CompetitorAnalysisService(
     private val productRepository: ProductRepository,
-    private val competitorRepository: CompetitorRepository,
+    private val competitorProfileRepository: CompetitorProfileRepository,
     private val zipCentroidRepository: ZipCentroidRepository,
     private val routingService: RoutingService,
 ) {
 
     /**
      * Compares all active competitors for [productId] at [destinationZip].
-     * Our delivered cost (product cost + routing freight) is fetched once and
-     * used as the savings baseline.
+     * Our delivered cost is fetched once from the routing engine; savings are relative to it.
      */
-    fun compare(productId: UUID, destinationZip: String): CompetitorComparison {
+    fun compare(productId: Long, destinationZip: String): CompetitorComparison {
         val product = productRepository.findById(productId)
             .orElseThrow { NoSuchElementException("Product $productId not found") }
 
-        val centroid = zipCentroidRepository.findById(destinationZip).orElse(null)
+        val centroid = zipCentroidRepository.findByZip(destinationZip)
             ?: throw NoSuchElementException("ZIP $destinationZip not in centroid table")
 
-        val ourDeliveredCost = resolveOurDeliveredCost(product, centroid)
-        val competitors = competitorRepository.findAll()
+        val routingResult = routingService.solveFor(productId, destinationZip, quantity = 1)
+        val ourDeliveredCost = routingResult.deliveredCost
 
-        val results = competitors.map { evaluateCoverage(product, it, centroid.region, destinationZip, ourDeliveredCost) }
+        val competitors = competitorProfileRepository.findAllActive()
+        val results = competitors.map { profile ->
+            evaluateCoverage(product, profile, centroid.region, destinationZip, ourDeliveredCost)
+        }
+
         return CompetitorComparison(
             productId = productId,
             destinationZip = destinationZip,
@@ -56,19 +52,22 @@ class CompetitorAnalysisService(
     }
 
     /**
-     * Batch comparison over all products in [category].
+     * Batch comparison over all products in [categoryId].
      * Our delivered cost is fetched once per product, not per product-competitor pair.
      */
-    fun compareByCategory(category: String, destinationZip: String): List<CompetitorComparison> {
-        val products = productRepository.findByCategory(category, Pageable.unpaged()).content
-        val centroid = zipCentroidRepository.findById(destinationZip).orElse(null)
+    fun compareByCategory(categoryId: Long, destinationZip: String): List<CompetitorComparison> {
+        val products = productRepository.findByCategoryId(categoryId)
+        val centroid = zipCentroidRepository.findByZip(destinationZip)
             ?: throw NoSuchElementException("ZIP $destinationZip not in centroid table")
 
-        val competitors = competitorRepository.findAll()
+        val competitors = competitorProfileRepository.findAllActive()
 
         return products.map { product ->
-            val ourDeliveredCost = resolveOurDeliveredCost(product, centroid)
-            val results = competitors.map { evaluateCoverage(product, it, centroid.region, destinationZip, ourDeliveredCost) }
+            val routingResult = routingService.solveFor(product.id, destinationZip, quantity = 1)
+            val ourDeliveredCost = routingResult.deliveredCost
+            val results = competitors.map { profile ->
+                evaluateCoverage(product, profile, centroid.region, destinationZip, ourDeliveredCost)
+            }
             CompetitorComparison(
                 productId = product.id,
                 destinationZip = destinationZip,
@@ -80,34 +79,12 @@ class CompetitorAnalysisService(
 
     // ── internal ─────────────────────────────────────────────────────────────
 
-    /**
-     * Resolves our delivered cost = product.cost + routing freight.
-     * Falls back to product.cost if routing has no feasible route.
-     */
-    private fun resolveOurDeliveredCost(product: Product, centroid: ZipCentroid): Money {
-        val routingResult = runCatching {
-            routingService.findOptimalRoute(
-                RoutingContext(
-                    opportunityId = UUID.randomUUID(),
-                    origin = Location(countryCode = "US"),
-                    destination = Location(countryCode = "US", region = centroid.region),
-                    weight = com.overdrive.cost.domain.Weight(product.weightLbs, WeightUnit.LBS),
-                    cargoValue = com.overdrive.cost.domain.Money(product.costAmount),
-                ),
-            )
-        }.getOrNull()
-
-        val cost = product.cost()
-        val freight = routingResult?.estimatedCost?.amount ?: BigDecimal.ZERO
-        return cost + Money.of(freight, cost.currency)
-    }
-
     private fun evaluateCoverage(
         product: Product,
-        profile: Competitor,
+        profile: CompetitorProfile,
         region: String,
         destinationZip: String,
-        ourDeliveredCost: Money,
+        ourDeliveredCost: com.overdrive.common.money.Money,
     ): CompetitorResult {
         val strategy = CompetitorStrategy.forModel(profile.distributionModel)
 
@@ -122,7 +99,7 @@ class CompetitorAnalysisService(
             CoverageDecision.Covered(
                 competitorId = profile.id,
                 competitorName = profile.name,
-                competitorType = strategy.type,
+                model = profile.distributionModel,
                 sellingPrice = strategy.estimateSellingPrice(product, profile),
                 deliveredCost = strategy.estimateDeliveredCost(product, destinationZip, profile),
             )
@@ -134,7 +111,7 @@ class CompetitorAnalysisService(
     private fun coverageFailureReason(
         product: Product,
         region: String,
-        profile: Competitor,
+        profile: CompetitorProfile,
         strategy: CompetitorStrategy,
     ): NotOfferedReason? {
         if (!profile.regionalPresence.contains(region)) return NotOfferedReason.OUT_OF_REGION
@@ -146,12 +123,12 @@ class CompetitorAnalysisService(
 
     companion object {
         private val HAZMAT_RESTRICTED = setOf(
-            com.overdrive.competitor.domain.CompetitorType.BIG_BOX_RETAIL,
-            com.overdrive.competitor.domain.CompetitorType.WAREHOUSE_CLUB,
+            com.overdrive.catalog.domain.DistributionModel.BIG_BOX_RETAIL,
+            com.overdrive.catalog.domain.DistributionModel.WAREHOUSE_CLUB,
         )
         private val TEMP_RESTRICTED = setOf(
-            com.overdrive.competitor.domain.CompetitorType.BIG_BOX_RETAIL,
-            com.overdrive.competitor.domain.CompetitorType.WAREHOUSE_CLUB,
+            com.overdrive.catalog.domain.DistributionModel.BIG_BOX_RETAIL,
+            com.overdrive.catalog.domain.DistributionModel.WAREHOUSE_CLUB,
         )
     }
 }
