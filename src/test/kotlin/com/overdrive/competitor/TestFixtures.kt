@@ -1,5 +1,6 @@
 package com.overdrive.competitor
 
+import com.overdrive.catalog.domain.competitor.Competitor
 import com.overdrive.catalog.domain.product.Product
 import java.math.BigDecimal
 import java.util.UUID
@@ -43,4 +44,22 @@ fun testProduct(
     orderFrequency = orderFrequency,
     categoryGrowth = categoryGrowth,
     logisticsComplexity = logisticsComplexity,
+)
+
+fun testCompetitor(
+    id: UUID = UUID.randomUUID(),
+    name: String = "Acme Co",
+    distributionModel: String = "HYBRID",
+    estimatedMargin: BigDecimal = BigDecimal("0.30"),
+    numWarehouses: Int = 5,
+    avgTransitDays: Int = 3,
+    regionalPresence: Array<String> = arrayOf("Midwest", "Northeast"),
+): Competitor = Competitor(
+    id = id,
+    name = name,
+    distributionModel = distributionModel,
+    estimatedMargin = estimatedMargin,
+    numWarehouses = numWarehouses,
+    avgTransitDays = avgTransitDays,
+    regionalPresence = regionalPresence,
 )

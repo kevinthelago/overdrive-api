@@ -26,7 +26,7 @@ data class CompetitorComparison(
             val sorted = savingsValues.sorted()
             val mid = sorted.size / 2
             return if (sorted.size % 2 == 0)
-                (sorted[mid - 1] + sorted[mid]).divide(BigDecimal("2"), MC)
+                (sorted[mid - 1] + sorted[mid]).divide(BigDecimal("2"), 10, RoundingMode.HALF_UP)
             else
                 sorted[mid]
         }

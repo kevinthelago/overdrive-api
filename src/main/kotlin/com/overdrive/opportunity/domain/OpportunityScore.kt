@@ -8,8 +8,8 @@ import java.util.UUID
 /**
  * The computed opportunity score for one product, with all six contributing factors.
  *
- * Formula: score = (SavingsPct × MarketSize × OrderFrequency × CategoryGrowth × SupplierAvailability)
- *                  / LogisticsComplexity_inverted
+ * Formula: score = SavingsPct × MarketSize × OrderFrequency × CategoryGrowth × SupplierAvailability
+ *                  × LogisticsComplexity_inverted
  *
  * All factor values are normalized to [0,1]. The denominator is the inverted logistics
  * complexity (also [0,1]), floored at [COMPLEXITY_FLOOR] to avoid division by zero.
@@ -60,14 +60,14 @@ data class OpportunityScore(
                     supplierAvailability, logisticsComplexity)
             }
 
-            val denominator = logisticsComplexity.normalizedValue.max(COMPLEXITY_FLOOR)
-            val numerator = savingsPct.normalizedValue
+            // normalizeLogisticsComplexity already inverts: high raw → low value → penalises score
+            val complexityFactor = logisticsComplexity.normalizedValue.max(COMPLEXITY_FLOOR)
+            val score = savingsPct.normalizedValue
                 .multiply(marketSize.normalizedValue, MC)
                 .multiply(orderFrequency.normalizedValue, MC)
                 .multiply(categoryGrowth.normalizedValue, MC)
                 .multiply(supplierAvailability.normalizedValue, MC)
-
-            val score = numerator.divide(denominator, MC)
+                .multiply(complexityFactor, MC)
                 .multiply(BigDecimal("100"), MC)
                 .setScale(4, RoundingMode.HALF_UP)
 

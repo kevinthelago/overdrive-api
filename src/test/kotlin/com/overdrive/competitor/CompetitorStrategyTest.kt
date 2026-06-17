@@ -1,6 +1,5 @@
 package com.overdrive.competitor
 
-import com.overdrive.catalog.domain.competitor.Competitor
 import com.overdrive.competitor.domain.CompetitorStrategy
 import com.overdrive.competitor.domain.CompetitorType
 import io.kotest.core.spec.style.FreeSpec
@@ -9,21 +8,12 @@ import io.kotest.matchers.bigdecimal.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.math.BigDecimal
-import java.util.UUID
 
 class CompetitorStrategyTest : FreeSpec({
 
     val baseProduct = testProduct()
 
-    val baseProfile = Competitor(
-        id = UUID.randomUUID(),
-        name = "Acme Co",
-        distributionModel = "HYBRID",
-        estimatedMargin = BigDecimal("0.30"),
-        numWarehouses = 5,
-        avgTransitDays = 3,
-        regionalPresence = arrayOf("Midwest", "Northeast"),
-    )
+    val baseProfile = testCompetitor()
 
     "MarginReseller" - {
         "selling price = cost / (1 - margin)" {
@@ -51,7 +41,7 @@ class CompetitorStrategyTest : FreeSpec({
     }
 
     "BigBoxRetail" - {
-        val bbProfile = baseProfile.copy(distributionModel = "DIRECT")
+        val bbProfile = testCompetitor(distributionModel = "DIRECT")
 
         "selling price is below MSRP" {
             val estimate = CompetitorStrategy.BigBoxRetail.estimateSellingPrice(baseProduct, bbProfile)
@@ -67,7 +57,7 @@ class CompetitorStrategyTest : FreeSpec({
     }
 
     "IndustrialDistributor" - {
-        val indProfile = baseProfile.copy(distributionModel = "DISTRIBUTOR")
+        val indProfile = testCompetitor(distributionModel = "DISTRIBUTOR")
 
         "selling price = cost × (1 + margin)" {
             val estimate = CompetitorStrategy.IndustrialDistributor.estimateSellingPrice(baseProduct, indProfile)
@@ -82,10 +72,7 @@ class CompetitorStrategyTest : FreeSpec({
     }
 
     "WarehouseClub" - {
-        val wcProfile = baseProfile.copy(
-            distributionModel = "MARKETPLACE",
-            numWarehouses = 5,
-        )
+        val wcProfile = testCompetitor(distributionModel = "MARKETPLACE", numWarehouses = 5)
 
         "uses thin fixed margin regardless of profile margin" {
             val estimate = CompetitorStrategy.WarehouseClub.estimateSellingPrice(baseProduct, wcProfile)
@@ -95,7 +82,7 @@ class CompetitorStrategyTest : FreeSpec({
         }
 
         "not covered when warehouse count is too low" {
-            val sparseProfile = wcProfile.copy(numWarehouses = 2)
+            val sparseProfile = testCompetitor(distributionModel = "MARKETPLACE", numWarehouses = 2)
             CompetitorStrategy.WarehouseClub.isCovering(baseProduct, "Midwest", sparseProfile) shouldBe false
         }
     }
