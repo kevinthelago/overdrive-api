@@ -14,8 +14,8 @@ interface ProductRepository : JpaRepository<Product, UUID> {
     @Query("""
         SELECT p FROM Product p
         WHERE (:category IS NULL OR p.category = :category)
-          AND (:search   IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                                 OR LOWER(p.sku)  LIKE LOWER(CONCAT('%', :search, '%')))
+          AND (:search   IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                                 OR LOWER(p.sku)  LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
     """)
     fun search(
         @Param("category") category: String?,

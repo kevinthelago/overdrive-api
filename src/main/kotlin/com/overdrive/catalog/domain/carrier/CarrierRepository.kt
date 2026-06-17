@@ -12,8 +12,8 @@ interface CarrierRepository : JpaRepository<Carrier, UUID> {
     @Query("""
         SELECT c FROM Carrier c
         WHERE (:pricingModel IS NULL OR c.pricingModel = :pricingModel)
-          AND (:search IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                               OR LOWER(c.scac) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND (:search IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                               OR LOWER(c.scac) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
     """)
     fun search(
         @Param("pricingModel") pricingModel: String?,

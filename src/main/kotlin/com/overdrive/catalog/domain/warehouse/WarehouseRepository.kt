@@ -13,7 +13,7 @@ interface WarehouseRepository : JpaRepository<Warehouse, UUID> {
         SELECT w FROM Warehouse w
         WHERE (:type   IS NULL OR w.type  = :type)
           AND (:state  IS NULL OR w.state = :state)
-          AND (:search IS NULL OR LOWER(w.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND (:search IS NULL OR LOWER(w.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
     """)
     fun search(
         @Param("type")   type: String?,
