@@ -72,105 +72,105 @@ VALUES
 -- ─── Products (≥20 across ≥5 categories) ──────────────────────────────────────
 
 INSERT INTO product (id, sku, name, category,
-                     weight_value, weight_unit, length_in, width_in, height_in,
+                     weight_lbs, length_in, width_in, height_in,
                      hazardous, fragile, temperature_sensitive, stackable, pallet_qty,
                      cost_amount, cost_currency, msrp_amount, msrp_currency,
                      market_size, order_frequency, category_growth, logistics_complexity)
 VALUES
 -- ELECTRONICS (high value, fragile, varies in weight)
 ('b1000000-0000-0000-0000-000000000001', 'ELEC-BT-001', 'ProSound Bluetooth Speaker',   'ELECTRONICS',
-    2.50, 'LB', 10.0, 6.0, 5.0,  FALSE, TRUE,  FALSE, FALSE, 48,
+    2.50, 10.0, 6.0, 5.0,  FALSE, TRUE,  FALSE, FALSE, 48,
     28.00, 'USD', 79.99, 'USD',  450000, 2.4, 0.08, 5.5),
 
 ('b1000000-0000-0000-0000-000000000002', 'ELEC-HD-001', '4K Portable Monitor 15"',     'ELECTRONICS',
-    4.20, 'LB', 15.5, 10.0, 2.5, FALSE, TRUE,  FALSE, FALSE, 24,
+    4.20, 15.5, 10.0, 2.5, FALSE, TRUE,  FALSE, FALSE, 24,
     75.00, 'USD', 199.99, 'USD', 220000, 1.8, 0.12, 6.5),
 
 ('b1000000-0000-0000-0000-000000000003', 'ELEC-CHG-001', 'GaN 100W USB-C Charger',    'ELECTRONICS',
-    0.55, 'LB',  4.0,  3.0, 2.0, FALSE, FALSE, FALSE, TRUE,  200,
+    0.55,  4.0,  3.0, 2.0, FALSE, FALSE, FALSE, TRUE,  200,
     12.00, 'USD', 39.99, 'USD',  900000, 3.5, 0.18, 2.5),
 
 ('b1000000-0000-0000-0000-000000000004', 'ELEC-CB-001', 'True Wireless Earbuds Pro',   'ELECTRONICS',
-    0.40, 'LB',  5.0,  3.5, 2.5, FALSE, FALSE, FALSE, TRUE,  240,
+    0.40,  5.0,  3.5, 2.5, FALSE, FALSE, FALSE, TRUE,  240,
     18.00, 'USD', 59.99, 'USD', 1200000, 4.2, 0.15, 3.0),
 
 -- HEALTH_BEAUTY
 ('b1000000-0000-0000-0000-000000000005', 'HB-VIT-001', 'Vitamin D3 + K2 Softgels 90ct','HEALTH_BEAUTY',
-    0.60, 'LB',  4.0,  3.0, 4.5, FALSE, FALSE, FALSE, TRUE,  360,
+    0.60,  4.0,  3.0, 4.5, FALSE, FALSE, FALSE, TRUE,  360,
      4.25, 'USD', 18.99, 'USD', 3400000, 6.0, 0.10, 1.5),
 
 ('b1000000-0000-0000-0000-000000000006', 'HB-PRO-001', 'Marine Collagen Peptides 500g','HEALTH_BEAUTY',
-    1.30, 'LB',  6.0,  4.0, 5.0, FALSE, FALSE, FALSE, TRUE,  180,
+    1.30,  6.0,  4.0, 5.0, FALSE, FALSE, FALSE, TRUE,  180,
      7.50, 'USD', 34.99, 'USD', 1800000, 4.8, 0.14, 2.0),
 
 ('b1000000-0000-0000-0000-000000000007', 'HB-SK-001', 'Retinol Night Cream 50ml',      'HEALTH_BEAUTY',
-    0.25, 'LB',  3.0,  2.0, 3.5, FALSE, TRUE,  FALSE, TRUE,  600,
+    0.25,  3.0,  2.0, 3.5, FALSE, TRUE,  FALSE, TRUE,  600,
      6.00, 'USD', 28.99, 'USD', 2200000, 5.5, 0.09, 2.5),
 
 -- HARDWARE_TOOLS
 ('b1000000-0000-0000-0000-000000000008', 'HW-DRV-001', '20V Cordless Drill/Driver Kit','HARDWARE_TOOLS',
-    6.80, 'LB', 14.0, 10.0, 5.0, FALSE, FALSE, FALSE, FALSE, 12,
+    6.80, 14.0, 10.0, 5.0, FALSE, FALSE, FALSE, FALSE, 12,
     38.00, 'USD', 99.99, 'USD',  780000, 1.5, 0.06, 5.0),
 
 ('b1000000-0000-0000-0000-000000000009', 'HW-TPC-001', 'Professional Tape Measure 25ft','HARDWARE_TOOLS',
-    0.80, 'LB',  5.0,  5.0, 3.0, FALSE, FALSE, FALSE, TRUE,  144,
+    0.80,  5.0,  5.0, 3.0, FALSE, FALSE, FALSE, TRUE,  144,
      4.00, 'USD', 14.99, 'USD', 2000000, 3.0, 0.04, 1.5),
 
 ('b1000000-0000-0000-0000-000000000010', 'HW-SAW-001', '7-1/4" Circular Saw 5200RPM', 'HARDWARE_TOOLS',
-    9.50, 'LB', 20.0, 10.0, 9.0, FALSE, FALSE, FALSE, FALSE,  8,
+    9.50, 20.0, 10.0, 9.0, FALSE, FALSE, FALSE, FALSE,  8,
     55.00, 'USD', 139.99, 'USD', 480000, 1.2, 0.05, 6.5),
 
 -- OFFICE_SUPPLIES
 ('b1000000-0000-0000-0000-000000000011', 'OF-PAPER-001', 'Copy Paper 20lb 500-Sheet Ream','OFFICE_SUPPLIES',
-    5.00, 'LB', 11.5,  9.0, 2.5, FALSE, FALSE, FALSE, TRUE,   40,
+    5.00, 11.5,  9.0, 2.5, FALSE, FALSE, FALSE, TRUE,   40,
      2.50, 'USD',  9.99, 'USD', 5000000, 8.0, 0.01, 3.0),
 
 ('b1000000-0000-0000-0000-000000000012', 'OF-INK-001', 'Black Ballpoint Pens 36-Pack',  'OFFICE_SUPPLIES',
-    0.90, 'LB',  8.5,  5.0, 3.0, FALSE, FALSE, FALSE, TRUE,  300,
+    0.90,  8.5,  5.0, 3.0, FALSE, FALSE, FALSE, TRUE,  300,
      2.80, 'USD',  9.99, 'USD', 3500000, 7.5, 0.02, 1.0),
 
 ('b1000000-0000-0000-0000-000000000013', 'OF-DESK-001', 'Mesh Desk Organizer 5-Tier',  'OFFICE_SUPPLIES',
-    3.40, 'LB', 12.0,  9.0, 14.0,FALSE, FALSE, FALSE, FALSE, 24,
+    3.40, 12.0,  9.0, 14.0,FALSE, FALSE, FALSE, FALSE, 24,
      8.50, 'USD', 29.99, 'USD', 950000, 2.5, 0.04, 3.0),
 
 -- HOME_GOODS
 ('b1000000-0000-0000-0000-000000000014', 'HG-TWL-001', 'Egyptian Cotton Towel Set 6pc', 'HOME_GOODS',
-    4.50, 'LB', 16.0, 12.0,  6.0,FALSE, FALSE, FALSE, TRUE,  30,
+    4.50, 16.0, 12.0,  6.0,FALSE, FALSE, FALSE, TRUE,  30,
     12.00, 'USD', 44.99, 'USD', 1600000, 3.2, 0.07, 3.5),
 
 ('b1000000-0000-0000-0000-000000000015', 'HG-CA-001', 'Stainless Steel French Press 34oz','HOME_GOODS',
-    2.10, 'LB',  9.0,  5.0, 13.0,FALSE, TRUE,  FALSE, FALSE, 48,
+    2.10,  9.0,  5.0, 13.0,FALSE, TRUE,  FALSE, FALSE, 48,
     10.00, 'USD', 34.99, 'USD', 1100000, 2.8, 0.08, 4.0),
 
 ('b1000000-0000-0000-0000-000000000016', 'HG-AIR-001', 'HEPA Air Purifier 500sqft',    'HOME_GOODS',
-   11.00, 'LB', 15.0, 10.0, 22.0,FALSE, FALSE, FALSE, FALSE,  6,
+   11.00, 15.0, 10.0, 22.0,FALSE, FALSE, FALSE, FALSE,  6,
     55.00, 'USD', 159.99, 'USD', 680000, 1.9, 0.14, 6.0),
 
 -- SPORTING_GOODS
 ('b1000000-0000-0000-0000-000000000017', 'SG-YG-001', 'Premium Yoga Mat 6mm Non-Slip',  'SPORTING_GOODS',
-    2.80, 'LB', 26.0,  8.0,  3.5,FALSE, FALSE, FALSE, TRUE,  30,
+    2.80, 26.0,  8.0,  3.5,FALSE, FALSE, FALSE, TRUE,  30,
      9.00, 'USD', 32.99, 'USD', 2100000, 4.0, 0.11, 2.5),
 
 ('b1000000-0000-0000-0000-000000000018', 'SG-RB-001', 'Adjustable Resistance Bands Set','SPORTING_GOODS',
-    1.50, 'LB',  9.0,  6.0,  4.0,FALSE, FALSE, FALSE, TRUE,  120,
+    1.50,  9.0,  6.0,  4.0,FALSE, FALSE, FALSE, TRUE,  120,
      5.50, 'USD', 22.99, 'USD', 3200000, 5.5, 0.16, 1.5),
 
 -- APPAREL
 ('b1000000-0000-0000-0000-000000000019', 'AP-TS-001', 'Organic Cotton T-Shirt Unisex M','APPAREL',
-    0.55, 'LB',  9.0,  7.0,  1.5,FALSE, FALSE, FALSE, TRUE,  240,
+    0.55,  9.0,  7.0,  1.5,FALSE, FALSE, FALSE, TRUE,  240,
      4.50, 'USD', 22.99, 'USD', 8000000, 7.0, 0.06, 2.0),
 
 ('b1000000-0000-0000-0000-000000000020', 'AP-JK-001', 'Lightweight Packable Rain Jacket','APPAREL',
-    0.85, 'LB', 10.0,  8.0,  3.0,FALSE, FALSE, FALSE, TRUE,  120,
+    0.85, 10.0,  8.0,  3.0,FALSE, FALSE, FALSE, TRUE,  120,
     14.00, 'USD', 59.99, 'USD', 3500000, 3.8, 0.09, 3.0),
 
 -- AUTOMOTIVE
 ('b1000000-0000-0000-0000-000000000021', 'AU-FIL-001', 'Premium Oil Filter 6-Pack',     'AUTOMOTIVE',
-    2.40, 'LB', 11.0,  7.0,  5.0,FALSE, FALSE, FALSE, TRUE,  72,
+    2.40, 11.0,  7.0,  5.0,FALSE, FALSE, FALSE, TRUE,  72,
      9.50, 'USD', 24.99, 'USD', 4500000, 6.5, 0.04, 2.5),
 
 ('b1000000-0000-0000-0000-000000000022', 'AU-CAM-001', 'Backup Camera with Night Vision','AUTOMOTIVE',
-    0.90, 'LB',  8.0,  5.0,  3.0,FALSE, TRUE,  FALSE, TRUE,  96,
+    0.90,  8.0,  5.0,  3.0,FALSE, TRUE,  FALSE, TRUE,  96,
     18.00, 'USD', 54.99, 'USD', 1900000, 2.8, 0.12, 4.5);
 
 
