@@ -1,22 +1,20 @@
 package com.overdrive.competitor.domain
 
-import com.overdrive.catalog.domain.DistributionModel
+import java.util.UUID
 
 /** Result of the coverage check that precedes every estimate. */
 sealed class CoverageDecision {
 
-    /** Competitor covers this product/region; [estimate] is the selling price estimate. */
     data class Covered(
-        val competitorId: Long,
+        val competitorId: UUID,
         val competitorName: String,
-        val model: DistributionModel,
+        val competitorType: CompetitorType,
         val sellingPrice: CompetitorEstimate,
         val deliveredCost: CompetitorEstimate,
     ) : CoverageDecision()
 
-    /** Competitor does not serve this product or region; no price is fabricated. */
     data class NotOffered(
-        val competitorId: Long,
+        val competitorId: UUID,
         val competitorName: String,
         val reason: NotOfferedReason,
     ) : CoverageDecision()

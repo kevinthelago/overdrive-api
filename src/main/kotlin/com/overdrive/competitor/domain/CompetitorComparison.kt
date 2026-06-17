@@ -4,23 +4,26 @@ import com.overdrive.common.money.Money
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
+import java.util.UUID
 
 /**
- * Full price comparison for a single product at a single ZIP, across all active competitors.
- * [ourDeliveredCost] is the routed cost from our network (the baseline for savings).
+ * Full price comparison for a single product at a single destination region,
+ * across all active competitors. [ourDeliveredCost] is the routing engine's cost
+ * (product.cost + freight) — the baseline for savings calculations.
  */
 data class CompetitorComparison(
-    val productId: Long,
+    val productId: UUID,
     val destinationZip: String,
     val ourDeliveredCost: Money,
     val perCompetitor: List<CompetitorResult>,
 ) {
     val medianSavingsPct: BigDecimal
         get() {
-            val covered = perCompetitor.filterIsInstance<CompetitorResult.Win>() +
-                perCompetitor.filterIsInstance<CompetitorResult.Loss>()
-            if (covered.isEmpty()) return BigDecimal.ZERO
-            val sorted = covered.map { it.savingsPct }.sorted()
+            val savingsValues = perCompetitor
+                .filterNot { it is CompetitorResult.NotOffered }
+                .map { it.savingsPct }
+            if (savingsValues.isEmpty()) return BigDecimal.ZERO
+            val sorted = savingsValues.sorted()
             val mid = sorted.size / 2
             return if (sorted.size % 2 == 0)
                 (sorted[mid - 1] + sorted[mid]).divide(BigDecimal("2"), MC)
@@ -31,17 +34,16 @@ data class CompetitorComparison(
 
 /**
  * Per-competitor outcome for one product/ZIP pair.
- * Savings % = (competitor delivered cost − our delivered cost) / our delivered cost.
- * Positive = we are cheaper (win); negative = competitor is cheaper (loss).
+ * Savings % = (their delivered cost − our delivered cost) / our delivered cost.
+ * Positive = competitor is more expensive (we win); negative = competitor is cheaper (we lose).
  */
 sealed class CompetitorResult {
-
-    abstract val competitorId: Long
+    abstract val competitorId: UUID
     abstract val competitorName: String
     abstract val savingsPct: BigDecimal
 
     data class Win(
-        override val competitorId: Long,
+        override val competitorId: UUID,
         override val competitorName: String,
         val ourCost: Money,
         val theirDeliveredCost: Money,
@@ -51,7 +53,7 @@ sealed class CompetitorResult {
     ) : CompetitorResult()
 
     data class Loss(
-        override val competitorId: Long,
+        override val competitorId: UUID,
         override val competitorName: String,
         val ourCost: Money,
         val theirDeliveredCost: Money,
@@ -61,7 +63,7 @@ sealed class CompetitorResult {
     ) : CompetitorResult()
 
     data class NotOffered(
-        override val competitorId: Long,
+        override val competitorId: UUID,
         override val competitorName: String,
         val reason: NotOfferedReason,
     ) : CompetitorResult() {
@@ -71,10 +73,7 @@ sealed class CompetitorResult {
     companion object {
         private val MC = MathContext(10, RoundingMode.HALF_UP)
 
-        fun from(
-            coverage: CoverageDecision,
-            ourDeliveredCost: Money,
-        ): CompetitorResult = when (coverage) {
+        fun from(coverage: CoverageDecision, ourDeliveredCost: Money): CompetitorResult = when (coverage) {
             is CoverageDecision.NotOffered -> NotOffered(
                 competitorId = coverage.competitorId,
                 competitorName = coverage.competitorName,
@@ -83,7 +82,8 @@ sealed class CompetitorResult {
 
             is CoverageDecision.Covered -> {
                 val theirCost = coverage.deliveredCost.price
-                val savings = ourDeliveredCost.amount.subtract(theirCost.amount)
+                // Positive savings = we are competitive (their cost is higher)
+                val savings = theirCost.amount.subtract(ourDeliveredCost.amount)
                     .divide(ourDeliveredCost.amount, MC)
                 if (savings >= BigDecimal.ZERO)
                     Win(

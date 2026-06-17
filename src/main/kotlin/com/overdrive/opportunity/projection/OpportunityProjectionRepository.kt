@@ -12,11 +12,11 @@ interface OpportunityProjectionRepository : JpaRepository<OpportunityProjection,
 
     fun findAllByScenarioIdOrderByScoreDesc(scenarioId: UUID): List<OpportunityProjection>
 
-    fun findByProductIdAndScenarioIdIsNull(productId: Long): OpportunityProjection?
+    fun findByProductIdAndScenarioIdIsNull(productId: UUID): OpportunityProjection?
 
-    fun findByProductIdAndScenarioId(productId: Long, scenarioId: UUID): OpportunityProjection?
+    fun findByProductIdAndScenarioId(productId: UUID, scenarioId: UUID): OpportunityProjection?
 
-    fun findAllByCategoryIdAndScenarioIdIsNullOrderByScoreDesc(categoryId: Long): List<OpportunityProjection>
+    fun findAllByCategoryAndScenarioIdIsNullOrderByScoreDesc(category: String): List<OpportunityProjection>
 
     @Modifying
     @Query(
@@ -28,7 +28,7 @@ interface OpportunityProjectionRepository : JpaRepository<OpportunityProjection,
         """,
     )
     fun deleteByProductIdAndScenarioId(
-        @Param("productId") productId: Long,
+        @Param("productId") productId: UUID,
         @Param("scenarioId") scenarioId: UUID?,
     )
 }
