@@ -22,8 +22,8 @@ class OpportunityController(
 
     /**
      * GET /api/opportunities
-     * Returns ranked OpportunityResult DTOs with all six factor values, and a region breakdown.
-     * Pass [scenarioId] to overlay a scenario on top of the baseline.
+     * Returns ranked OpportunityResult DTOs (products + categories + region breakdown).
+     * Reads from the pre-computed projection table. Pass scenarioId to overlay a scenario.
      */
     @GetMapping
     fun getOpportunities(
@@ -31,12 +31,8 @@ class OpportunityController(
     ): ResponseEntity<OpportunityResponse> {
         val scores = opportunityEngineService.getRankedOpportunities(scenarioId)
         val results = scores.map { OpportunityResult.from(it) }
-        return ResponseEntity.ok(
-            OpportunityResponse(
-                products = results,
-                categoryRankings = aggregateByCategory(results),
-            ),
-        )
+        val categoryRankings = aggregateByCategory(results)
+        return ResponseEntity.ok(OpportunityResponse(products = results, categoryRankings = categoryRankings))
     }
 
     /**
@@ -51,14 +47,16 @@ class OpportunityController(
         return ResponseEntity.accepted().build()
     }
 
+    // ── private helpers ───────────────────────────────────────────────────────
+
     private fun aggregateByCategory(results: List<OpportunityResult>): List<CategoryOpportunity> =
-        results.groupBy { it.category }
-            .map { (category, group) ->
+        results.groupBy { it.categoryId }
+            .map { (categoryId, group) ->
                 val avg = group.map { it.score }
-                    .fold(BigDecimal.ZERO, BigDecimal::add)
+                    .fold(BigDecimal.ZERO) { acc, v -> acc.add(v) }
                     .divide(BigDecimal(group.size), 4, RoundingMode.HALF_UP)
                 CategoryOpportunity(
-                    category = category,
+                    categoryId = categoryId,
                     aggregateScore = avg,
                     productCount = group.size,
                     topProductId = group.maxByOrNull { it.score }?.productId,

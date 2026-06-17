@@ -1,13 +1,9 @@
 package com.overdrive.opportunity.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.overdrive.catalog.domain.product.Product
-import com.overdrive.catalog.domain.product.ProductRepository
-import com.overdrive.catalog.domain.supplier.SupplierProductRepository
-import com.overdrive.common.money.Money
-import com.overdrive.competitor.domain.CompetitorResult
+import com.overdrive.catalog.service.ProductRepository
+import com.overdrive.catalog.service.SupplierRepository
 import com.overdrive.competitor.service.CompetitorAnalysisService
-import com.overdrive.cost.domain.WeightUnit
 import com.overdrive.opportunity.domain.FactorNormalizer
 import com.overdrive.opportunity.domain.FactorType
 import com.overdrive.opportunity.domain.OpportunityFactor
@@ -17,10 +13,7 @@ import com.overdrive.opportunity.domain.UsRegion
 import com.overdrive.opportunity.domain.ZeroReason
 import com.overdrive.opportunity.projection.OpportunityProjection
 import com.overdrive.opportunity.projection.OpportunityProjectionRepository
-import com.overdrive.routing.domain.Location
-import com.overdrive.routing.domain.RoutingContext
 import com.overdrive.routing.service.RoutingService
-import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -30,100 +23,108 @@ import java.util.UUID
 @Service
 class OpportunityEngineService(
     private val productRepository: ProductRepository,
-    private val supplierProductRepository: SupplierProductRepository,
+    private val supplierRepository: SupplierRepository,
     private val competitorAnalysisService: CompetitorAnalysisService,
     private val routingService: RoutingService,
     private val projectionRepository: OpportunityProjectionRepository,
     private val objectMapper: ObjectMapper,
 ) {
 
+    /**
+     * Returns all ranked baseline opportunity scores (no scenario).
+     * Reads from the pre-computed projection table; scores are only empty on first boot.
+     */
     @Transactional(readOnly = true)
     fun getRankedOpportunities(scenarioId: UUID? = null): List<OpportunityScore> {
         val projections = if (scenarioId == null)
             projectionRepository.findAllByScenarioIdIsNullOrderByScoreDesc()
         else
             projectionRepository.findAllByScenarioIdOrderByScoreDesc(scenarioId)
+
         return projections.map { it.toDomain() }
     }
 
+    /**
+     * Recomputes scores for all active products and persists projections.
+     * Idempotent: existing projections for the same product+scenario are replaced.
+     */
     @Transactional
     fun recomputeAll(scenarioId: UUID? = null) {
-        productRepository.findAll().forEach { product ->
-            val score = computeForProduct(product, scenarioId)
+        val products = productRepository.findAllActive()
+        products.forEach { product ->
+            val score = computeForProduct(product.id, scenarioId)
             persist(score, scenarioId)
         }
     }
 
+    /**
+     * Recomputes the score for a single product and persists it.
+     */
     @Transactional
-    fun recomputeForProduct(productId: UUID, scenarioId: UUID? = null): OpportunityScore {
-        val product = productRepository.findById(productId)
-            .orElseThrow { NoSuchElementException("Product $productId not found") }
-        val score = computeForProduct(product, scenarioId)
+    fun recomputeForProduct(productId: Long, scenarioId: UUID? = null): OpportunityScore {
+        val score = computeForProduct(productId, scenarioId)
         persist(score, scenarioId)
         return score
     }
 
     // ── internal ─────────────────────────────────────────────────────────────
 
-    private fun computeForProduct(product: Product, scenarioId: UUID?): OpportunityScore {
-        val baselineZip = UsRegion.MIDWEST.representativeZip
+    private fun computeForProduct(productId: Long, scenarioId: UUID?): OpportunityScore {
+        val product = productRepository.findById(productId)
+            .orElseThrow { NoSuchElementException("Product $productId not found") }
 
-        // ── factor: savings % ────────────────────────────────────────────────
+        // ── factor: savings % (median across competitors, or 0 on no-route / not-offered) ──
         val savingsPctFactor = run {
-            val route = runCatching {
-                routingService.findOptimalRoute(
-                    RoutingContext(
-                        opportunityId = UUID.randomUUID(),
-                        origin = Location("US"),
-                        destination = Location("US", UsRegion.MIDWEST.regionLabel),
-                        weight = com.overdrive.cost.domain.Weight(product.weightLbs, WeightUnit.LBS),
-                        cargoValue = com.overdrive.cost.domain.Money(product.costAmount),
-                    ),
-                )
+            val routingResult = runCatching {
+                routingService.solveFor(productId, representativeZipForProduct(), quantity = 1)
             }.getOrNull()
 
-            if (route == null) {
+            if (routingResult == null || !routingResult.feasible) {
                 return@run OpportunityFactor(FactorType.SAVINGS_PCT, BigDecimal.ZERO, BigDecimal.ZERO, ZeroReason.NO_ROUTE)
             }
 
             val comparison = runCatching {
-                competitorAnalysisService.compare(product.id, baselineZip)
+                competitorAnalysisService.compare(productId, representativeZipForProduct())
             }.getOrNull()
 
-            val allNotOffered = comparison?.perCompetitor?.all { it is CompetitorResult.NotOffered } ?: true
-            if (allNotOffered && (comparison?.perCompetitor?.isNotEmpty() == true)) {
+            val medianSavings = comparison?.medianSavingsPct ?: BigDecimal.ZERO
+            if (medianSavings <= BigDecimal.ZERO && comparison?.perCompetitor?.all {
+                    it is com.overdrive.competitor.domain.CompetitorResult.NotOffered
+                } == true) {
                 return@run OpportunityFactor(FactorType.SAVINGS_PCT, BigDecimal.ZERO, BigDecimal.ZERO,
                     ZeroReason.NOT_OFFERED_BY_ANY_COMPETITOR)
             }
-
-            val median = comparison?.medianSavingsPct?.max(BigDecimal.ZERO) ?: BigDecimal.ZERO
-            OpportunityFactor(FactorType.SAVINGS_PCT, median, FactorNormalizer.normalizeSavingsPct(median))
+            val normalized = FactorNormalizer.normalizeSavingsPct(medianSavings.max(BigDecimal.ZERO))
+            OpportunityFactor(FactorType.SAVINGS_PCT, medianSavings, normalized)
         }
 
         // ── factor: market size ──────────────────────────────────────────────
         val marketSizeRaw = product.marketSize ?: BigDecimal.ZERO
         val marketSizeFactor = OpportunityFactor(
-            FactorType.MARKET_SIZE, marketSizeRaw, FactorNormalizer.normalizeMarketSize(marketSizeRaw),
+            FactorType.MARKET_SIZE, marketSizeRaw,
+            FactorNormalizer.normalizeMarketSize(marketSizeRaw),
         )
 
         // ── factor: order frequency ──────────────────────────────────────────
         val orderFreqRaw = product.orderFrequency ?: BigDecimal.ZERO
         val orderFreqFactor = OpportunityFactor(
-            FactorType.ORDER_FREQUENCY, orderFreqRaw, FactorNormalizer.normalizeOrderFrequency(orderFreqRaw),
+            FactorType.ORDER_FREQUENCY, orderFreqRaw,
+            FactorNormalizer.normalizeOrderFrequency(orderFreqRaw),
         )
 
         // ── factor: category growth ──────────────────────────────────────────
         val growthRaw = product.categoryGrowth ?: BigDecimal.ZERO
         val categoryGrowthFactor = OpportunityFactor(
-            FactorType.CATEGORY_GROWTH, growthRaw, FactorNormalizer.normalizeCategoryGrowth(growthRaw),
+            FactorType.CATEGORY_GROWTH, growthRaw,
+            FactorNormalizer.normalizeCategoryGrowth(growthRaw),
         )
 
         // ── factor: supplier availability ───────────────────────────────────
-        val supplierLinks = supplierProductRepository.findByProductId(product.id)
-        val supplierAvailabilityRaw = if (supplierLinks.isEmpty()) BigDecimal.ZERO
-        else supplierLinks.map { it.supplier.reliabilityScore }
-            .fold(BigDecimal.ZERO, BigDecimal::add)
-            .divide(BigDecimal(supplierLinks.size), 6, java.math.RoundingMode.HALF_UP)
+        val supplierAvailabilityRaw = supplierRepository.findByProductId(productId)
+            .let { suppliers ->
+                if (suppliers.isEmpty()) BigDecimal.ZERO
+                else suppliers.map { it.reliabilityScore }.average().toBigDecimal()
+            }
         val supplierFactor = OpportunityFactor(
             FactorType.SUPPLIER_AVAILABILITY, supplierAvailabilityRaw,
             FactorNormalizer.normalizeSupplierAvailability(supplierAvailabilityRaw),
@@ -138,11 +139,11 @@ class OpportunityEngineService(
         )
 
         // ── per-region breakdown ─────────────────────────────────────────────
-        val regionalBreakdown = computeRegionalBreakdown(product)
+        val regionalBreakdown = computeRegionalBreakdown(productId, savingsPctFactor)
 
         return OpportunityScore.compute(
-            productId = product.id,
-            category = product.category,
+            productId = productId,
+            categoryId = product.category.id,
             savingsPct = savingsPctFactor,
             marketSize = marketSizeFactor,
             orderFrequency = orderFreqFactor,
@@ -153,38 +154,29 @@ class OpportunityEngineService(
         )
     }
 
-    private fun computeRegionalBreakdown(product: Product): List<RegionalScore> =
+    private fun computeRegionalBreakdown(productId: Long, baselineSavings: OpportunityFactor): List<RegionalScore> =
         UsRegion.entries.mapNotNull { region ->
-            val route = runCatching {
-                routingService.findOptimalRoute(
-                    RoutingContext(
-                        opportunityId = UUID.randomUUID(),
-                        origin = Location("US"),
-                        destination = Location("US", region.regionLabel),
-                        weight = com.overdrive.cost.domain.Weight(product.weightLbs, WeightUnit.LBS),
-                        cargoValue = com.overdrive.cost.domain.Money(product.costAmount),
-                    ),
-                )
+            val routingResult = runCatching {
+                routingService.solveFor(productId, region.representativeZip, quantity = 1)
             }.getOrNull() ?: return@mapNotNull null
+
+            if (!routingResult.feasible) return@mapNotNull null
 
             val comparison = runCatching {
-                competitorAnalysisService.compare(product.id, region.representativeZip)
+                competitorAnalysisService.compare(productId, region.representativeZip)
             }.getOrNull() ?: return@mapNotNull null
 
-            val medianSavings = comparison.medianSavingsPct
-            val cost = product.cost()
-            @Suppress("UNUSED_VARIABLE")
-            val ourDeliveredCost = cost + Money.of(route.estimatedCost.amount, cost.currency)
-            val score = medianSavings.max(BigDecimal.ZERO)
-
             RegionalScore(
-                productId = product.id,
-                region = region.regionLabel,
+                productId = productId,
+                region = region.label,
                 representativeZip = region.representativeZip,
-                score = score,
-                savingsPct = medianSavings,
+                score = comparison.medianSavingsPct.max(BigDecimal.ZERO),
+                savingsPct = comparison.medianSavingsPct,
             )
         }
+
+    /** Uses the national median ZIP for the baseline savings % computation. */
+    private fun representativeZipForProduct() = UsRegion.MIDWEST.representativeZip
 
     private fun persist(score: OpportunityScore, scenarioId: UUID?) {
         projectionRepository.deleteByProductIdAndScenarioId(score.productId, scenarioId)
@@ -193,8 +185,8 @@ class OpportunityEngineService(
 
     private fun OpportunityScore.toProjection(scenarioId: UUID?) = OpportunityProjection(
         productId = productId,
-        category = category,
-        score = score,
+        categoryId = categoryId,
+        score = this.score,
         savingsPct = savingsPct.rawValue,
         marketSizeUsd = marketSize.rawValue,
         orderFrequency = orderFrequency.rawValue,
@@ -202,7 +194,7 @@ class OpportunityEngineService(
         supplierAvailability = supplierAvailability.rawValue,
         logisticsComplexity = logisticsComplexity.rawValue,
         regionBreakdownJson = objectMapper.writeValueAsString(regionalBreakdown),
-        zeroReason = this.zeroReason?.name,
+        zeroReason = zeroReason?.name,
         scenarioId = scenarioId,
         computedAt = Instant.now(),
     )
@@ -213,21 +205,24 @@ class OpportunityEngineService(
             ?: emptyList()
         return OpportunityScore(
             productId = productId,
-            category = category,
+            categoryId = categoryId,
             score = score,
-            savingsPct = factor(FactorType.SAVINGS_PCT, savingsPct, FactorNormalizer::normalizeSavingsPct),
-            marketSize = factor(FactorType.MARKET_SIZE, marketSizeUsd, FactorNormalizer::normalizeMarketSize),
-            orderFrequency = factor(FactorType.ORDER_FREQUENCY, orderFrequency, FactorNormalizer::normalizeOrderFrequency),
-            categoryGrowth = factor(FactorType.CATEGORY_GROWTH, categoryGrowthPct, FactorNormalizer::normalizeCategoryGrowth),
-            supplierAvailability = factor(FactorType.SUPPLIER_AVAILABILITY, this.supplierAvailability, FactorNormalizer::normalizeSupplierAvailability),
-            logisticsComplexity = factor(FactorType.LOGISTICS_COMPLEXITY, logisticsComplexity ?: BigDecimal("1.0"), FactorNormalizer::normalizeLogisticsComplexity),
-            zeroReason = this.zeroReason?.let { ZeroReason.valueOf(it) },
+            savingsPct = OpportunityFactor(FactorType.SAVINGS_PCT, savingsPct ?: BigDecimal.ZERO,
+                savingsPct?.let { FactorNormalizer.normalizeSavingsPct(it) } ?: BigDecimal.ZERO),
+            marketSize = OpportunityFactor(FactorType.MARKET_SIZE, marketSizeUsd ?: BigDecimal.ZERO,
+                marketSizeUsd?.let { FactorNormalizer.normalizeMarketSize(it) } ?: BigDecimal.ZERO),
+            orderFrequency = OpportunityFactor(FactorType.ORDER_FREQUENCY, orderFrequency ?: BigDecimal.ZERO,
+                orderFrequency?.let { FactorNormalizer.normalizeOrderFrequency(it) } ?: BigDecimal.ZERO),
+            categoryGrowth = OpportunityFactor(FactorType.CATEGORY_GROWTH, categoryGrowthPct ?: BigDecimal.ZERO,
+                categoryGrowthPct?.let { FactorNormalizer.normalizeCategoryGrowth(it) } ?: BigDecimal.ZERO),
+            supplierAvailability = OpportunityFactor(FactorType.SUPPLIER_AVAILABILITY,
+                supplierAvailability ?: BigDecimal.ZERO,
+                supplierAvailability?.let { FactorNormalizer.normalizeSupplierAvailability(it) } ?: BigDecimal.ZERO),
+            logisticsComplexity = OpportunityFactor(FactorType.LOGISTICS_COMPLEXITY,
+                logisticsComplexity ?: BigDecimal("1.0"),
+                logisticsComplexity?.let { FactorNormalizer.normalizeLogisticsComplexity(it) } ?: BigDecimal("0.5")),
+            zeroReason = zeroReason?.let { ZeroReason.valueOf(it) },
             regionalBreakdown = regional,
         )
-    }
-
-    private fun factor(type: FactorType, raw: BigDecimal?, normalize: (BigDecimal) -> BigDecimal): OpportunityFactor {
-        val r = raw ?: BigDecimal.ZERO
-        return OpportunityFactor(type, r, normalize(r))
     }
 }
