@@ -14,7 +14,7 @@ import java.util.UUID
 @RestController
 @RequestMapping("/api/competitors")
 @Validated
-class CompetitorController(
+class CompetitorAnalysisController(
     private val competitorAnalysisService: CompetitorAnalysisService,
 ) {
 
