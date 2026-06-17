@@ -1,0 +1,4 @@
+logging:
+  level:
+    com.overdrive: DEBUG
+    org.hibernate.SQL: DEBUG
