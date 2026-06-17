@@ -2,6 +2,7 @@ package com.overdrive.catalog.web
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.overdrive.catalog.domain.carrier.Carrier
+import com.overdrive.catalog.domain.carrier.CarrierLaneRepository
 import com.overdrive.catalog.domain.carrier.CarrierRepository
 import com.overdrive.support.AbstractIntegrationTest
 import org.junit.jupiter.api.BeforeEach
@@ -20,11 +21,15 @@ import java.math.BigDecimal
 class CarrierControllerIT @Autowired constructor(
     val mvc: MockMvc,
     val mapper: ObjectMapper,
-    val repo: CarrierRepository
+    val repo: CarrierRepository,
+    val laneRepo: CarrierLaneRepository,
 ) : AbstractIntegrationTest() {
 
     @BeforeEach
-    fun clearCarriers() = repo.deleteAll()
+    fun clearCarriers() {
+        laneRepo.deleteAll()
+        repo.deleteAll()
+    }
 
     private fun carrierJson(name: String = "Test Carrier", model: String = "PARCEL") = """
         {
