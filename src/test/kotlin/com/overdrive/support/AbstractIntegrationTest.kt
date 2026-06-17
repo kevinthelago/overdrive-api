@@ -6,31 +6,33 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 
 /**
- * Base class for integration tests. Starts shared Postgres 16 and Redis 7 containers
- * once per JVM using the Testcontainers singleton pattern.
+ * Base class for integration tests. Starts Postgres 16 and Redis 7 exactly once per JVM.
+ *
+ * Containers are started in the companion object init{} block rather than via @Container so
+ * the JUnit 5 Testcontainers extension does not stop them between subclasses. Stopping between
+ * subclasses exhausts HikariCP connections and causes timeouts in downstream test classes.
+ * Testcontainers' Ryuk watchdog handles cleanup at JVM exit.
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers(disabledWithoutDocker = true)
 abstract class AbstractIntegrationTest {
 
     companion object {
 
-        @Container
-        @JvmField
         val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:16-alpine")
             .withDatabaseName("overdrive")
             .withUsername("overdrive")
             .withPassword("overdrive")
 
-        @Container
-        @JvmField
         val redis: GenericContainer<*> = GenericContainer("redis:7-alpine")
             .withExposedPorts(6379)
+
+        init {
+            postgres.start()
+            redis.start()
+        }
 
         @DynamicPropertySource
         @JvmStatic
