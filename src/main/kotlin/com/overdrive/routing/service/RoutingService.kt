@@ -54,7 +54,9 @@ class RoutingService(
             val costNorm = if (maxCost == 0.0) 1.0 else cost.amount.toDouble() / maxCost
             val daysNorm = if (maxDays == 0.0) 1.0 else c.transitDays / maxDays
             val baseScore = 1.0 / (costNorm * 0.4 + daysNorm * 0.6 + 0.001)
-            val score = if (c.carrier == preferredCarrier) baseScore * 1.2 else baseScore
+            // Preferred carrier is always ranked first; score is pinned to MAX_VALUE so it
+            // survives any cost/time combination without relying on a small multiplier.
+            val score = if (c.carrier == preferredCarrier) Double.MAX_VALUE else baseScore
             Triple(c, cost, score)
         }.sortedByDescending { it.third }
 
