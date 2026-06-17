@@ -133,14 +133,19 @@ class AnalyticsService(
         return CompetitorMatrixResponse(entries)
     }
 
-    @Cacheable("analytics-opportunity-region", key = "#scenarioId")
+    @Cacheable("analytics-opportunity-region", key = "#scenarioId ?: 'baseline'")
     fun opportunityByRegion(scenarioId: UUID?): OpportunityByRegionResponse {
-        val rawRows = opportunityRepo.aggregateByRegion(scenarioId)
+        val rawRows = if (scenarioId == null)
+            opportunityRepo.aggregateBaselineByRegion()
+        else
+            opportunityRepo.aggregateScenarioByRegion(scenarioId)
         val regions = rawRows.map { row ->
             OpportunityRegionEntry(
                 region = row[0] as String,
-                opportunityScore = (row[1] as Double).let {
-                    BigDecimal.valueOf(it).setScale(4, RoundingMode.HALF_UP)
+                opportunityScore = when (val v = row[1]) {
+                    is BigDecimal -> v.setScale(4, RoundingMode.HALF_UP)
+                    is Double -> BigDecimal.valueOf(v).setScale(4, RoundingMode.HALF_UP)
+                    else -> BigDecimal.ZERO
                 },
                 productCount = (row[2] as Long).toInt(),
             )

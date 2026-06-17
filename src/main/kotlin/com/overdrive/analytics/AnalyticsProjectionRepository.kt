@@ -99,13 +99,22 @@ interface AnalyticsCompetitorSummaryRepository : JpaRepository<AnalyticsCompetit
 interface AnalyticsOpportunitySummaryRepository : JpaRepository<AnalyticsOpportunitySummary, UUID> {
     fun findByScenarioIdOrderByOpportunityScoreDesc(scenarioId: UUID?): List<AnalyticsOpportunitySummary>
 
+    // Split into two methods — JPQL `= :param` does not translate to IS NULL when param is null
+    @Query("""
+        SELECT a.region, AVG(a.opportunityScore) AS avgScore, COUNT(DISTINCT a.productId) AS productCount
+        FROM AnalyticsOpportunitySummary a
+        WHERE a.scenarioId IS NULL AND a.region IS NOT NULL
+        GROUP BY a.region
+    """)
+    fun aggregateBaselineByRegion(): List<Array<Any?>>
+
     @Query("""
         SELECT a.region, AVG(a.opportunityScore) AS avgScore, COUNT(DISTINCT a.productId) AS productCount
         FROM AnalyticsOpportunitySummary a
         WHERE a.scenarioId = :scenarioId AND a.region IS NOT NULL
         GROUP BY a.region
     """)
-    fun aggregateByRegion(@Param("scenarioId") scenarioId: UUID?): List<Array<Any?>>
+    fun aggregateScenarioByRegion(@Param("scenarioId") scenarioId: UUID): List<Array<Any?>>
 }
 
 interface AnalyticsWarehouseUtilizationRepository : JpaRepository<AnalyticsWarehouseUtilization, UUID> {

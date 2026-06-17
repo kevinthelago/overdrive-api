@@ -122,7 +122,7 @@ class AnalyticsEndpointTest : AbstractIntegrationTest() {
         mvc.get("/api/analytics/savings-distribution")
             .andExpect {
                 status { isOk() }
-                jsonPath("$.buckets").isArray()
+                jsonPath("$.buckets") { isArray() }
             }
     }
 
