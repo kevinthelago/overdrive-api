@@ -3,6 +3,7 @@ package com.overdrive.opportunity.domain
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
+import java.util.UUID
 
 /**
  * The computed opportunity score for one product, with all six contributing factors.
@@ -11,13 +12,13 @@ import java.math.RoundingMode
  *                  / LogisticsComplexity_inverted
  *
  * All factor values are normalized to [0,1]. The denominator is the inverted logistics
- * complexity (also [0,1]), floored at [COMPLEXITY_FLOOR] to avoid division-by-zero.
+ * complexity (also [0,1]), floored at [COMPLEXITY_FLOOR] to avoid division by zero.
  *
  * If [zeroReason] is non-null the score is definitively zero and no further computation is performed.
  */
 data class OpportunityScore(
-    val productId: Long,
-    val categoryId: Long,
+    val productId: UUID,
+    val category: String,
     val score: BigDecimal,
     val savingsPct: OpportunityFactor,
     val marketSize: OpportunityFactor,
@@ -30,13 +31,11 @@ data class OpportunityScore(
 ) {
     companion object {
         private val MC = MathContext(10, RoundingMode.HALF_UP)
-
-        /** Prevents divide-by-zero when logistics complexity normalizes to 0. */
         private val COMPLEXITY_FLOOR = BigDecimal("0.05")
 
         fun compute(
-            productId: Long,
-            categoryId: Long,
+            productId: UUID,
+            category: String,
             savingsPct: OpportunityFactor,
             marketSize: OpportunityFactor,
             orderFrequency: OpportunityFactor,
@@ -45,20 +44,18 @@ data class OpportunityScore(
             logisticsComplexity: OpportunityFactor,
             regionalBreakdown: List<RegionalScore> = emptyList(),
         ): OpportunityScore {
-            // Guard: supplier availability zero → no supply, score is 0.
             if (supplierAvailability.normalizedValue.compareTo(BigDecimal.ZERO) == 0) {
-                return zero(productId, categoryId, ZeroReason.NO_SUPPLIER_AVAILABILITY,
+                return zero(productId, category, ZeroReason.NO_SUPPLIER_AVAILABILITY,
                     savingsPct, marketSize, orderFrequency, categoryGrowth,
                     supplierAvailability, logisticsComplexity)
             }
-            // Guard: no savings means our cost is already at or below theirs, or no-route.
             if (savingsPct.zeroReason == ZeroReason.NO_ROUTE) {
-                return zero(productId, categoryId, ZeroReason.NO_ROUTE,
+                return zero(productId, category, ZeroReason.NO_ROUTE,
                     savingsPct, marketSize, orderFrequency, categoryGrowth,
                     supplierAvailability, logisticsComplexity)
             }
             if (savingsPct.zeroReason == ZeroReason.NOT_OFFERED_BY_ANY_COMPETITOR) {
-                return zero(productId, categoryId, ZeroReason.NOT_OFFERED_BY_ANY_COMPETITOR,
+                return zero(productId, category, ZeroReason.NOT_OFFERED_BY_ANY_COMPETITOR,
                     savingsPct, marketSize, orderFrequency, categoryGrowth,
                     supplierAvailability, logisticsComplexity)
             }
@@ -70,13 +67,13 @@ data class OpportunityScore(
                 .multiply(categoryGrowth.normalizedValue, MC)
                 .multiply(supplierAvailability.normalizedValue, MC)
 
-            val rawScore = numerator.divide(denominator, MC)
-            // Scale to [0, 100] for readability.
-            val score = rawScore.multiply(BigDecimal("100"), MC).setScale(4, RoundingMode.HALF_UP)
+            val score = numerator.divide(denominator, MC)
+                .multiply(BigDecimal("100"), MC)
+                .setScale(4, RoundingMode.HALF_UP)
 
             return OpportunityScore(
                 productId = productId,
-                categoryId = categoryId,
+                category = category,
                 score = score,
                 savingsPct = savingsPct,
                 marketSize = marketSize,
@@ -90,8 +87,8 @@ data class OpportunityScore(
         }
 
         private fun zero(
-            productId: Long,
-            categoryId: Long,
+            productId: UUID,
+            category: String,
             reason: ZeroReason,
             savingsPct: OpportunityFactor,
             marketSize: OpportunityFactor,
@@ -101,7 +98,7 @@ data class OpportunityScore(
             logisticsComplexity: OpportunityFactor,
         ) = OpportunityScore(
             productId = productId,
-            categoryId = categoryId,
+            category = category,
             score = BigDecimal.ZERO,
             savingsPct = savingsPct,
             marketSize = marketSize,
